@@ -1,7 +1,23 @@
 // offline self-test: watcher -> adapter -> upstream engine -> sqlite
 // run: bun tests/selftest.mjs
 import { rmSync } from "node:fs";
+import { request as httpRequest } from "node:http";
 import { join } from "node:path";
+
+// node:http speaks directly to 127.0.0.1 and never consults HTTP_PROXY.
+// Bun's fetch would go through the shell's proxy (HTTP_PROXY is set with an
+// empty NO_PROXY here) and a proxy 502 is neither "up" nor "down".
+const httpGet = (port, path) =>
+  new Promise((resolve, reject) => {
+    const req = httpRequest({ host: "127.0.0.1", port, path, timeout: 3000 }, (res) => {
+      let body = "";
+      res.on("data", (c) => (body += c));
+      res.on("end", () => resolve({ status: res.statusCode, body }));
+    });
+    req.on("timeout", () => req.destroy(new Error("timeout")));
+    req.on("error", reject);
+    req.end();
+  });
 
 const ROOT = import.meta.dir.replace(/\\tests$/, "");
 const TMP = join(ROOT, "tests", "tmp-selftest.db");
@@ -154,7 +170,8 @@ const goodFreeze = await (await fetch("http://127.0.0.1:3599/api/command", {
 ok("freeze via page server", goodFreeze.text.length > 0 || (goodFreeze.toasts || []).length > 0);
 ok("command response carries state", goodFreeze.state && goodFreeze.state.frozen === true);
 await srv.close();
-const afterClose = await fetch("http://127.0.0.1:3599/api/ping").then(() => false, () => true);
+// direct connection, no proxy: after close the port must refuse to connect
+const afterClose = await httpGet(3599, "/api/ping").then(() => false, () => true);
 ok("server closed", afterClose);
 
 // ------------------------------------------------------------------- run 8b --
@@ -166,7 +183,9 @@ const taker = createPetServer({ databasePath: TMP, port: 3597, notifyGate: () =>
 ok("taker backs off while port held", (await taker.start()) === false);
 await holder.close();
 await new Promise((r) => setTimeout(r, 700));
-const taken = await fetch("http://127.0.0.1:3597/api/ping").then((r) => r.json()).catch(() => null);
+const taken = await httpGet(3597, "/api/ping")
+  .then((r) => JSON.parse(r.body))
+  .catch(() => null);
 ok("taker takes over after holder exits", taken && taken.ok === true);
 await taker.close();
 
