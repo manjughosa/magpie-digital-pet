@@ -47,7 +47,7 @@
   - `getSpriteFrames(frames, sprite) -> Record<string, string> | undefined`
   - `chooseFrame(frames, sprite, preferredNames) -> { name: string, content: string } | undefined`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `tests/pet-frames.test.mjs` 断言：
 
@@ -60,26 +60,26 @@ assert.equal(getSpriteFrames(frames, "egg").walk_1.length > 0, true);
 assert.equal(chooseFrame(frames, "missing", ["walk_1", "walk_2"]), undefined);
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `bun tests/pet-frames.test.mjs`  
 Expected: FAIL，模块不存在。
 
-- [ ] **Step 3: Implement the extractor and loader**
+- [x] **Step 3: Implement the extractor and loader**
 
 提取器只接受两个精确标记：`var MONSTER_FRAME_DATA = ` 与 `];\n\n// ../digital-pet-core/src/data/monster-frame-catalog.ts`；在空 sandbox 中解析数组字面量，并校验每个条目是 `[sprite, [[frameName, content], ...]]`。输出 JSON 包含 `source: "jcendal/digital-pet 0.18.0 embedded TUI bundle"`、`frameNames` 和 `sprites`。加载器把 `sprites` 对象转成 `Map`，不修改帧字符串。
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `bun tests/pet-frames.test.mjs`  
 Expected: PASS。
 
-- [ ] **Step 5: Generate the checked-in asset**
+- [x] **Step 5: Generate the checked-in asset**
 
 Run: `bun tools/extract-frames.mjs`  
 Expected: 生成 `lib/monster-frames.json`，日志输出 `646 sprites / 7227 frames`。
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add tools/extract-frames.mjs lib/pet.frames.mjs tests/pet-frames.test.mjs lib/monster-frames.json
