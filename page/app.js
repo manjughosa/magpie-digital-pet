@@ -411,7 +411,7 @@ function paintHero(s) {
   $("pet-pin-badge").hidden = !s.pinned;
   $("pet-frozen-badge").hidden = !s.frozen;
   $("evo-fill").style.width = `${Math.max(1.5, p.pct).toFixed(1)}%`;
-  $("evo-text").textContent = `${fmt(p.gauge)} / ${fmt(p.threshold)} tokens`;
+  $("evo-text").textContent = `本阶段 ${fmt(p.gauge)} / ${fmt(p.threshold)} tokens`;
   $("evo-pct").textContent = `${p.pct.toFixed(2)}%`;
   $("battle").hidden = !p.battle;
   if (p.battle) $("battle-foe").textContent = p.battle.nameEn;
@@ -603,7 +603,7 @@ function paint(s) {
   lastState = s;
   if (s.ok) {
     $("sub").textContent =
-      `已喂 ${s.fedRequests} 个请求 · ${fmt(s.fedTokens)} tokens` +
+      `累计已喂 ${s.fedRequests} 个请求 · ${fmt(s.fedTokens)} tokens` +
       (s.fedCost > 0 ? ` · $${s.fedCost.toFixed(2)}` : "");
   }
   const habitat = $("habitat");

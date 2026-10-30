@@ -95,7 +95,7 @@ function status() {
   const receipts = db.query("SELECT COUNT(*) c, SUM(token_delta) t FROM usage_receipts").get();
 
   console.log(`db        ${dbPath}`);
-  console.log(`fed       ${receipts.c} requests · ${fmtTokens(receipts.t ?? 0)} tokens (all-time)`);
+  console.log(`fed       ${receipts.c} requests · ${fmtTokens(receipts.t ?? 0)} tokens（累计）`);
   console.log(`trainer   ${fmtTokens(trainer?.total_tokens ?? 0)} tokens`);
   if (control?.cheat_node_id) {
     console.log(`mode      pinned to ${nodeLabel(control.cheat_node_id)} (set; no growth)`);
@@ -110,7 +110,7 @@ function status() {
     const threshold = STAGE_THRESHOLDS[stage] ?? 0;
     const pct = threshold > 0 ? ((partner.gauge / threshold) * 100).toFixed(2) : "?";
     console.log(`partner   gen ${partner.generation} · ${nodeLabel(partner.current_node_id)}`);
-    console.log(`          stage ${STAGE_NAMES[stage] ?? stage} · gauge ${fmtTokens(partner.gauge)} / ${fmtTokens(threshold)} (${pct}%)`);
+    console.log(`          stage ${STAGE_NAMES[stage] ?? stage} · 本阶段 ${fmtTokens(partner.gauge)} / ${fmtTokens(threshold)} (${pct}%)`);
     if (partner.battle_opponent_node_id) {
       console.log(`          evolution battle pending vs ${nodeLabel(partner.battle_opponent_node_id)}`);
     }
