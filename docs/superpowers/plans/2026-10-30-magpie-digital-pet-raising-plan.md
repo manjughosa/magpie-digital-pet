@@ -331,25 +331,25 @@ git commit -m "Build interactive pixel pet habitat"
 - Consumes: Task 4 `CareStore.getCareSnapshot` 与 `getCollection`。
 - Produces: `bun cli/pet-cli.mjs status` 输出 `care`、`bond`、`fragments`、`expedition` 四行只读摘要；版本升级到 `0.4.0`。
 
-- [ ] **Step 1: Write the failing documentation/CLI contract test**
+- [x] **Step 1: Write the failing documentation/CLI contract test**
 
 断言 README 与设置页都写 `<插件目录>\data\pet.db` 或等价的「插件目录下的 `data/pet.db`」；README 包含新页面操作说明；`package.json` version 为 `0.4.0`；CLI status 在没有新养成表时仍能输出原有状态。
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `bun tests/docs-contract.test.mjs`  
 Expected: FAIL。
 
-- [ ] **Step 3: Implement CLI summary and docs**
+- [x] **Step 3: Implement CLI summary and docs**
 
 CLI 只读接入 care store，不改变现有命令语义。设置页修正数据库路径并说明新操作在侧边栏「宠物」页。README 更新界面、玩法、测试命令和卸载数据说明。
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `bun tests/docs-contract.test.mjs`  
 Expected: PASS。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add cli/pet-cli.mjs ui/panel.html README.md package.json tests/docs-contract.test.mjs
