@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>宠物</title>
+<style>
+  :root {
+    --bg: Canvas; --fg: CanvasText; --muted: GrayText; --line: color-mix(in srgb, canvastext 14%, transparent);
+    --accent: #e8a33d; --ok: #15803d; --bar: color-mix(in srgb, canvastext 12%, transparent);
+    color-scheme: light dark;
+  }
+  html.theme-dark { color-scheme: dark; }
+  html.theme-light { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 18px 20px 40px;
+    font: 13px/1.6 var(--magpie-font, -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", system-ui, sans-serif);
+    background: var(--bg); color: var(--fg);
+  }
+  .muted { color: var(--muted); }
+  .small { font-size: 12px; }
+  h1 { font-size: 15px; margin: 0 0 2px; }
+  h2 { font-size: 13px; margin: 22px 0 8px; color: var(--muted); font-weight: 600; }
+
+  .card {
+    border: 1px solid var(--line); border-radius: 12px;
+    padding: 16px 18px; margin-top: 14px;
+  }
+  .pet-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .pet-name { font-size: 19px; font-weight: 700; }
+  .pet-jp { color: var(--muted); font-size: 13px; }
+  .badge {
+    font-size: 11px; padding: 1px 8px; border-radius: 999px;
+    border: 1px solid var(--line); color: var(--muted);
+  }
+  .badge.warn { color: var(--accent); border-color: var(--accent); }
+
+  .bar-wrap { margin: 12px 0 4px; }
+  .bar {
+    height: 10px; border-radius: 999px; background: var(--bar); overflow: hidden;
+  }
+  .bar > i {
+    display: block; height: 100%; border-radius: 999px;
+    background: linear-gradient(90deg, #f0b95a, #e8a33d);
+    transition: width .4s ease;
+  }
+  .bar-note { display: flex; justify-content: space-between; margin-top: 5px; }
+
+  .stats { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+  .stat {
+    flex: 1 1 120px; border: 1px solid var(--line); border-radius: 10px;
+    padding: 8px 12px;
+  }
+  .stat .k { font-size: 11px; color: var(--muted); }
+  .stat .v { font-size: 16px; font-weight: 650; font-variant-numeric: tabular-nums; }
+
+  .row-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+  button {
+    font: inherit; padding: 5px 14px; border-radius: 8px; cursor: pointer;
+    border: 1px solid var(--line); background: var(--bg); color: var(--fg);
+  }
+  button:hover { border-color: var(--accent); }
+  button:disabled { opacity: .5; cursor: default; }
+  button.primary { border-color: var(--accent); color: var(--accent); }
+  #set-row { display: flex; gap: 8px; margin-top: 8px; }
+  #set-id {
+    font: inherit; width: 7em; padding: 5px 8px; border-radius: 8px;
+    border: 1px solid var(--line); background: var(--bg); color: var(--fg);
+  }
+  #say { margin-top: 10px; min-height: 1.5em; font-size: 12px; color: var(--muted); }
+  #say.ok { color: var(--ok); }
+
+  ul { list-style: none; margin: 0; padding: 0; }
+  li.ev {
+    display: flex; gap: 10px; align-items: baseline;
+    padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 12.5px;
+  }
+  li.ev:last-child { border-bottom: none; }
+  li.ev time { color: var(--muted); font-variant-numeric: tabular-nums; flex: none; }
+  li.ev .what { flex: 1; }
+  li.ev .tok { color: var(--muted); font-variant-numeric: tabular-nums; }
+  li.gen {
+    display: flex; gap: 10px; align-items: baseline; padding: 4px 0; font-size: 12.5px;
+  }
+  li.gen .g { color: var(--muted); flex: none; width: 3.5em; }
+  li.gen .r { color: var(--muted); font-size: 11px; margin-left: auto; }
+
+  .battle {
+    margin-top: 10px; padding: 8px 12px; border-radius: 10px;
+    border: 1px solid var(--accent); font-size: 12.5px;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  .empty { color: var(--muted); padding: 10px 0; }
+</style>
+</head>
+<body>
+  <h1>宠物</h1>
+  <div class="muted small" id="sub">烧 token，养电子宠物</div>
+
+  <div class="card" id="pet-card">
+    <div id="pet-body"><div class="empty">读取中…</div></div>
+  </div>
+
+  <div class="row-btns">
+    <button id="spawn" class="primary">孵新蛋</button>
+    <button id="freeze">冻结生长</button>
+    <button id="unfreeze">恢复生长</button>
+  </div>
+  <div id="set-row">
+    <input id="set-id" placeholder="4-001" spellcheck="false">
+    <button id="set">钉住此 ID</button>
+  </div>
+  <div id="say"></div>
+
+  <h2>喂食记录</h2>
+  <ul id="events"><li class="empty">读取中…</li></ul>
+
+  <h2>历代搭档</h2>
+  <ul id="gens"><li class="empty">读取中…</li></ul>
+
+  <div class="muted small" style="margin-top:26px">
+    数据库与 CLI 同源；页面每 5 秒刷新。<br>
+    原版引擎来自 @jcendal/opencode-digital-pet（Apache-2.0）。
+  </div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const fmt = (n) => {
+  n = Number(n) || 0;
+  if (n >= 1e9) return (n / 1e9).toFixed(2) + "B";
+  if (n >= 1e6) return (n / 1e6).toFixed(2) + "M";
+  if (n >= 1e3) return (n / 1e3).toFixed(1) + "K";
+  return String(n);
+};
+const timeOf = (iso) => {
+  const d = new Date(iso);
+  return Number.isFinite(d.getTime())
+    ? d.toLocaleString(undefined, { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })
+    : "";
+};
+
+// theme from the guide page's query string (magpie window follows the OS)
+try {
+  const q = new URLSearchParams(location.search);
+  const t = q.get("theme");
+  if (t === "dark") document.documentElement.classList.add("theme-dark");
+  if (t === "light") document.documentElement.classList.add("theme-light");
+} catch {}
+
+function say(msg, ok) {
+  const el = $("say");
+  el.textContent = msg || "";
+  el.className = ok ? "ok" : "";
+}
+
+function renderPet(s) {
+  const body = $("pet-body");
+  if (!s.ok) {
+    body.innerHTML = `<div class="empty">读不到数据库：${s.error || "?"}</div>`;
+    return;
+  }
+  $("sub").textContent = `已喂 ${s.fedRequests} 个请求 · ${fmt(s.fedTokens)} tokens${s.fedCost > 0 ? ` · $${s.fedCost.toFixed(2)}` : ""}`;
+  if (!s.partner) {
+    body.innerHTML = `<div class="empty">还没有搭档 —— 点下面的「孵新蛋」。</div>`;
+    return;
+  }
+  const p = s.partner;
+  const pin = s.pinned ? `<span class="badge warn">已钉住 · 不生长</span>` : "";
+  const frozen = s.frozen ? `<span class="badge warn">冻结中 · 不生长</span>` : "";
+  const battle = p.battle
+    ? `<div class="battle">⚔️ 进化对决待战：对手 <b>${p.battle.nameEn}</b>（用 CLI 迎战）</div>`
+    : "";
+  body.innerHTML = `
+    <div class="pet-head">
+      <span class="pet-name">${p.node.nameEn}</span>
+      <span class="pet-jp">${p.node.nameJp}</span>
+      <span class="badge">gen ${p.generation} · ${p.stageName}</span>
+      ${pin}${frozen}
+    </div>
+    ${p.node.url ? `<div class="small" style="margin-top:4px"><a href="${p.node.url}" target="_blank" rel="noreferrer">图鉴 ↗</a></div>` : ""}
+    <div class="bar-wrap">
+      <div class="bar"><i style="width:${Math.max(1.5, p.pct).toFixed(1)}%"></i></div>
+      <div class="bar-note small">
+        <span>${fmt(p.gauge)} / ${fmt(p.threshold)} tokens</span>
+        <span class="muted">${p.pct.toFixed(2)}%</span>
+      </div>
+    </div>
+    ${battle}
+    <div class="stats">
+      <div class="stat"><div class="k">训练师累计</div><div class="v">${fmt(s.trainerTokens)}</div></div>
+      <div class="stat"><div class="k">已喂请求</div><div class="v">${s.fedRequests}</div></div>
+      <div class="stat"><div class="k">喂食 token</div><div class="v">${fmt(s.fedTokens)}</div></div>
+    </div>`;
+}
+
+function renderLists(s) {
+  const ev = $("events");
+  if (!s.ok || !s.events || !s.events.length) {
+    ev.innerHTML = `<li class="empty">还没有记录。</li>`;
+  } else {
+    ev.innerHTML = "";
+    for (const e of s.events) {
+      const li = document.createElement("li");
+      li.className = "ev";
+      const what =
+        e.kind === "spawned" ? `孵出 ${e.node.nameEn}` :
+        e.kind === "usage_applied" ? `${e.node.nameEn} 进食` :
+        e.kind;
+      const tok = e.tokenDelta != null ? `+${fmt(e.tokenDelta)}` : "";
+      li.innerHTML = `<time>${timeOf(e.createdAt)}</time><span class="what">${what}</span><span class="tok">${tok}</span>`;
+      ev.append(li);
+    }
+  }
+  const gens = $("gens");
+  if (!s.ok || !s.partners || !s.partners.length) {
+    gens.innerHTML = `<li class="empty">还没有搭档。</li>`;
+  } else {
+    gens.innerHTML = "";
+    for (const g of s.partners.slice().reverse()) {
+      const li = document.createElement("li");
+      li.className = "gen";
+      li.innerHTML = `<span class="g">gen ${g.generation}</span><span>${g.node.nameEn}${g.retired ? "" : " · 现役"}</span><span class="r">${timeOf(g.createdAt)}</span>`;
+      gens.append(li);
+    }
+  }
+}
+
+function paint(s) { renderPet(s); renderLists(s); }
+
+async function load() {
+  try {
+    const r = await fetch("/api/state", { cache: "no-store" });
+    paint(await r.json());
+  } catch (e) {
+    say("刷新失败：" + (e?.message ?? e));
+  }
+}
+
+async function command(name, args) {
+  const btns = [...document.querySelectorAll("button")];
+  btns.forEach((b) => (b.disabled = true));
+  try {
+    const r = await fetch("/api/command", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name, args }),
+    });
+    const j = await r.json();
+    if (!r.ok) {
+      say(j?.error || `HTTP ${r.status}`);
+      return;
+    }
+    const toast = (j.toasts || []).map((t) => [t.title, t.message].filter(Boolean).join(" — ")).filter(Boolean).join("；");
+    say(toast || j.text || "完成", true);
+    if (j.state) paint(j.state);
+  } catch (e) {
+    say("命令失败：" + (e?.message ?? e));
+  } finally {
+    btns.forEach((b) => (b.disabled = false));
+  }
+}
+
+$("spawn").onclick = () => command("digital-pet-spawn");
+$("freeze").onclick = () => command("digital-pet-freeze");
+$("unfreeze").onclick = () => command("digital-pet-unfreeze");
+$("set").onclick = () => {
+  const id = $("set-id").value.trim();
+  if (!/^[0-9]-[0-9]{1,3}$/.test(id)) { say("ID 形如 4-001"); return; }
+  command("digital-pet-set", id);
+};
+
+load();
+setInterval(load, 5000);
+</script>
+</body>
+</html>
