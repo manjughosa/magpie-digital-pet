@@ -55,7 +55,7 @@ function cleanup() {
 process.on("exit", cleanup);
 
 // node:http request that never touches HTTP_PROXY.
-function httpJson(port, path, { method = "GET", body } = {}) {
+function httpJson(port, path, { method = "GET", body, headers = {} } = {}) {
   return new Promise((resolve, reject) => {
     const req = httpRequest(
       {
@@ -64,7 +64,7 @@ function httpJson(port, path, { method = "GET", body } = {}) {
         path,
         method,
         timeout: 5000,
-        headers: body === undefined ? {} : { "content-type": "application/json" },
+        headers: body === undefined ? { ...headers } : { "content-type": "application/json", ...headers },
       },
       (res) => {
         let text = "";
@@ -105,6 +105,27 @@ await adapterA.runCommand("digital-pet-spawn");
 const serverA = createPetServer({ databasePath: dbA, port: 3641, notifyGate: () => false });
 assert.equal(await serverA.start(), true);
 
+await test("CORS lets Magpie's sandboxed plugin page read and command", async () => {
+  // Magpie's plugin iframe is sandboxed with allow-scripts only, so its origin
+  // is null. Without these headers the browser turns the response into
+  // "Failed to fetch" and the page stays blank.
+  const state = await httpJson(3641, "/api/state");
+  assert.equal(state.headers["access-control-allow-origin"], "*");
+
+  const preflight = await httpJson(3641, "/api/command", {
+    method: "OPTIONS",
+    headers: {
+      origin: "null",
+      "access-control-request-method": "POST",
+      "access-control-request-headers": "content-type",
+    },
+  });
+  assert.equal(preflight.status, 204);
+  assert.equal(preflight.headers["access-control-allow-origin"], "*");
+  assert.match(preflight.headers["access-control-allow-methods"], /POST/);
+  assert.match(preflight.headers["access-control-allow-headers"], /content-type/i);
+});
+
 await test("state exposes default care snapshot, collection and frames after spawn", async () => {
   const res = await httpJson(3641, "/api/state");
   assert.equal(res.status, 200);
@@ -115,11 +136,13 @@ await test("state exposes default care snapshot, collection and frames after spa
 
   const care = state.care;
   assert.equal(care.state.partnerId, state.partner.id);
-  assert.equal(care.state.satiety, 72);
-  assert.equal(care.state.mood, 70);
-  assert.equal(care.state.energy, 80);
-  assert.equal(care.state.hygiene, 75);
-  assert.equal(care.state.bond, 0);
+  // a few milliseconds of natural decay may pass between spawn and this read
+  const near = (actual, expected) => assert.ok(Math.abs(actual - expected) < 0.1, `${actual} !~ ${expected}`);
+  near(care.state.satiety, 72);
+  near(care.state.mood, 70);
+  near(care.state.energy, 80);
+  near(care.state.hygiene, 75);
+  near(care.state.bond, 0);
   assert.equal(typeof care.summary.moodLabel, "string");
 
   assert.equal(state.expedition, null);
