@@ -151,7 +151,7 @@ ok("api/state counts receipts", state1.fedRequests === 5, `got ${state1.fedReque
 const pageHtml = await (await fetch("http://127.0.0.1:3599/")).text();
 ok("dashboard served", pageHtml.includes("\u5ba0\u7269") && pageHtml.includes("api/state"));
 const bootJs = await (await fetch("http://127.0.0.1:3599/boot.js")).text();
-ok("boot.js served (guide page asset)", bootJs.includes("3571"));
+ok("boot.js served (guide page asset)", bootJs.includes("3571") && bootJs.includes("Promise.race"));
 
 const badCmd = await fetch("http://127.0.0.1:3599/api/command", {
   method: "POST", headers: { "content-type": "application/json" },
