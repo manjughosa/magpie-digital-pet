@@ -245,9 +245,12 @@ git commit -m "Persist pet care progression"
 ```js
 {
   care, expedition, collection, daily,
-  frame: { name, content, available: string[] }
+  frame: { name, content, available: string[] },
+  frames: Record<string, string>
 }
 ```
+
+`frame` 是按当前状态选出的首帧；`frames` 是当前 sprite 的全部可用帧，供页面在进食、开心、睡觉、行走等反馈之间切换。缺帧 sprite 返回空对象，由页面使用稳定兜底。
 
 新增命令白名单精确为：`pet-feed-snack`、`pet-play`、`pet-clean`、`pet-rest`、`pet-pet-egg`、`pet-expedition-start`、`pet-expedition-claim`、`pet-decoration-equip`。
 
