@@ -86,6 +86,7 @@ test("all pet-* and digital-pet-* commands have buttons", () => {
     "digital-pet-freeze",
     "digital-pet-unfreeze",
     "digital-pet-set",
+    "pet-unpin",
   ]) {
     assert.ok(commands.has(name), `missing button for ${name}`);
   }
@@ -139,6 +140,13 @@ test("dex selection, rename controls and action effects are wired", () => {
   assert.ok(js.includes("ACTION_EFFECTS"), "per-action canvas effects missing");
   assert.ok(js.includes("paintDex"), "dex painter missing");
   assert.ok(js.includes("pet-rename"), "rename command wiring missing");
+});
+
+test("destructive spawn requires a second click and dex switch warns about pinning", () => {
+  assert.ok(js.includes("spawnConfirmUntil"), "spawn double-confirm state missing");
+  assert.ok(js.includes("再点一次确认孵新蛋"), "spawn confirmation copy missing");
+  assert.ok(js.includes("切换会展示并钉住该形态"), "dex switch warning missing");
+  assert.ok(html.includes('data-command="pet-unpin"'), "unpin button missing");
 });
 
 test("renderScene draws from a local frame set, never bare window.frames", () => {

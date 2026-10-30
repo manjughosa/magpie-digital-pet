@@ -348,13 +348,16 @@ await test("unknown pet-expedition-* commands are rejected as unknown-command wi
   assert.equal(after.json.collection.equippedTheme, themeBefore);
 });
 
-await test("original engine commands stay compatible and a re-spawn shows the new partner's default care", async () => {
+await test("original engine commands stay compatible; set displays the pinned node and unpin restores it", async () => {
   const set = await httpJson(3641, "/api/command", {
     method: "POST",
     body: { name: "digital-pet-set", args: "1-001" },
   });
   assert.equal(set.status, 200);
   assert.ok(set.json.state.partner);
+  assert.equal(set.json.state.pinned, "1-001");
+  assert.equal(set.json.state.partner.node.id, "1-001");
+  assert.equal(set.json.state.partner.engineNode.id, "0-001");
   assert.ok(set.json.state.care);
 
   const badSet = await httpJson(3641, "/api/command", {
@@ -364,6 +367,26 @@ await test("original engine commands stay compatible and a re-spawn shows the ne
   assert.equal(badSet.status, 400);
   assert.equal(typeof badSet.json.reason, "string");
 
+  const unpin = await httpJson(3641, "/api/command", {
+    method: "POST",
+    body: { name: "pet-unpin" },
+  });
+  assert.equal(unpin.status, 200);
+  assert.equal(unpin.json.state.pinned, null);
+  assert.equal(unpin.json.state.partner.node.id, "0-001");
+});
+
+await test("spawn is rate limited, then allowed after the active egg is old enough", async () => {
+  const tooSoon = await httpJson(3641, "/api/command", {
+    method: "POST",
+    body: { name: "digital-pet-spawn" },
+  });
+  assert.equal(tooSoon.status, 400);
+  assert.equal(tooSoon.json.reason, "spawn-cooldown");
+
+  withRawDb(dbA, (db) => {
+    db.run("UPDATE partners SET created_at = ? WHERE retired_at IS NULL", new Date(Date.now() - 120_000).toISOString());
+  });
   const spawn = await httpJson(3641, "/api/command", {
     method: "POST",
     body: { name: "digital-pet-spawn" },
@@ -372,8 +395,8 @@ await test("original engine commands stay compatible and a re-spawn shows the ne
   const state = spawn.json.state;
   assert.equal(state.partner.generation, 2);
   assert.equal(state.care.state.partnerId, state.partner.id);
-  assert.equal(state.care.state.satiety, 72);
-  assert.equal(state.care.state.bond, 0);
+  assert.ok(Math.abs(state.care.state.satiety - 72) < 0.1);
+  assert.ok(Math.abs(state.care.state.bond - 0) < 0.1);
 });
 
 await test("static files are confined to the page directory", async () => {

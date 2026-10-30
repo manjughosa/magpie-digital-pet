@@ -520,6 +520,7 @@ function paintDex(s) {
     btn.dataset.command = "digital-pet-set";
     btn.dataset.args = item.id;
     btn.textContent = item.current ? "正在展示" : "切换";
+    btn.title = "切换会展示并钉住该形态，暂时停止生长；可在管理里取消钉住。";
     btn.disabled = item.current;
     btn.addEventListener("click", () => command("digital-pet-set", item.id));
     card.append(title, jp, status, btn);
@@ -722,6 +723,7 @@ function updateButtons() {
 // ---------- commands ----------
 
 let busy = false;
+let spawnConfirmUntil = 0;
 
 const commandButtons = () => document.querySelectorAll("[data-command]");
 
@@ -771,6 +773,24 @@ document.querySelectorAll("[data-command]").forEach((btn) => {
       : btn.textContent;
   btn.addEventListener("click", () => {
     const name = btn.dataset.command;
+    if (name === "digital-pet-spawn") {
+      if (Date.now() > spawnConfirmUntil) {
+        spawnConfirmUntil = Date.now() + 4000;
+        btn.textContent = "再点一次确认孵新蛋";
+        say("当前宠物会退役，4 秒内再次点击确认孵新蛋。");
+        setTimeout(() => {
+          if (Date.now() > spawnConfirmUntil) {
+            btn.textContent = btn.dataset.label;
+            spawnConfirmUntil = 0;
+          }
+        }, 4100);
+        return;
+      }
+      spawnConfirmUntil = 0;
+      btn.textContent = btn.dataset.label;
+      command(name, btn.dataset.args);
+      return;
+    }
     if (name === "pet-rename") {
       const value = $("pet-rename-input").value.trim().replace(/\s+/g, " ");
       if (value.length < 1 || value.length > 20) {
