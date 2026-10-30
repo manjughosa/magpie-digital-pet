@@ -8,7 +8,7 @@
 
 ## 界面
 
-- **侧边栏页面**：magpie 窗口左侧导航里的「宠物」页 —— 当前搭档与进化进度条、喂食统计、一键孵蛋/冻结/钉 ID、喂食记录、历代列表，每 5 秒自刷新，主题跟随 magpie 窗口（page-chat 同款带路页跳本地服务）
+- **侧边栏页面**：magpie 窗口左侧导航里的「宠物」页 —— 首屏是宠物栖息地：像素宠物随状态活动，下方是五项状态条（饱食/心情/精力/清洁/亲密）与原有的进化进度条。本轮新玩法入口都在这一页：**日常照顾**（点心/玩耍/清洁/休息/摸蛋）、三档**探险**（短巡逻/数据原野/深夜远征，结算得数据碎片与随机见闻）、**每日目标**（照顾 2 次、探险 1 次、自动进食 10 个请求）与**装饰收藏**（碎片解锁主题装饰，本地成就记录）。原有的当前搭档与进化进度、喂食统计、一键孵蛋/冻结/钉 ID、喂食记录、历代列表全部保留在页面下方，每 5 秒自刷新，主题跟随 magpie 窗口（page-chat 同款带路页跳本地服务）
 - **设置面板**：magpie → Settings → Plugins → Digital Pet（开关、缓存 token、补录、轮询间隔）
 - **CLI**：见下
 
@@ -38,7 +38,8 @@ magpie plugin add E:\LLM_Config\Magpie\plugins\magpie-digital-pet
 
 ```sh
 cd E:\LLM_Config\Magpie\plugins\magpie-digital-pet
-bun cli\pet-cli.mjs status     # 当前进度、进化百分比（与侧边栏页同源）
+bun cli\pet-cli.mjs status     # 当前进度、进化百分比（与侧边栏页同源），另附四行只读养成摘要：
+                               # care（四项状态）/ bond（亲密）/ fragments（数据碎片）/ expedition（进行中探险）
 bun cli\pet-cli.mjs spawn     # 孵新蛋
 bun cli\pet-cli.mjs events     # 最近事件
 bun cli\pet-cli.mjs partners   # 养过的每一代
@@ -46,6 +47,8 @@ bun cli\pet-cli.mjs freeze     # 暂停生长（用量照记，宠物不长）
 bun cli\pet-cli.mjs unfreeze
 bun cli\pet-cli.mjs set 4-001  # 钉死某只（cheat，钉住时不再生长）
 ```
+
+CLI 只提供只读摘要；日常照顾、探险和装饰装备等写操作请用侧边栏「宠物」页。
 
 ## 配置
 
@@ -76,7 +79,14 @@ bun cli\pet-cli.mjs set 4-001  # 钉死某只（cheat，钉住时不再生长）
 ## 测试
 
 ```sh
-bun tests/selftest.mjs   # 26 项离线自检（假网关 + 临时库 + 页面服务 + 端口接管）
+bun tests/pet-frames.test.mjs              # 像素帧提取与加载
+bun tests/pet-care-rules.test.mjs          # 照顾状态与主动操作规则
+bun tests/pet-progression-rules.test.mjs   # 探险、每日目标与成就规则
+bun tests/pet-care-store.test.mjs          # 养成 SQLite 存储
+bun tests/pet-server-care.test.mjs         # 页面 API 与安全
+bun tests/page-contract.test.mjs           # 页面结构契约
+bun tests/docs-contract.test.mjs           # 文档与 CLI 摘要契约
+bun tests/selftest.mjs                     # 26 项离线自检（假网关 + 临时库 + 页面服务 + 端口接管）
 ```
 
 ## 卸载

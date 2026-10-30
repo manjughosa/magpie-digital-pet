@@ -1,7 +1,7 @@
 {
   "name": "magpie-digital-pet",
-  "version": "0.3.0",
-  "description": "Digital Pet for the magpie gateway: every request magpie routes feeds your Digimon partner. Ported from @jcendal/opencode-digital-pet 0.18.0 (Apache-2.0). Polls magpie's own usage API; never touches agents' contexts.",
+  "version": "0.4.0",
+  "description": "Digital Pet for the magpie gateway: every request magpie routes feeds your Digimon partner, now with local care, expeditions and collections. Ported from @jcendal/opencode-digital-pet 0.18.0 (Apache-2.0). Polls magpie's own usage API; never touches agents' contexts.",
   "type": "module",
   "main": "./index.mjs",
   "files": [

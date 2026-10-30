@@ -17,13 +17,15 @@ import { Database } from "bun:sqlite";
 const HERE = import.meta.dir;
 const ADAPTER = join(HERE, "..", "lib", "pet.adapter.mjs");
 const { createPetAdapter, nodeById, defaultDatabasePath } = await import(ADAPTER);
+const { createCareStore } = await import(join(HERE, "..", "lib", "pet.care-store.mjs"));
 
 const STAGE_NAMES = ["egg", "baby I", "baby II", "child", "adult", "perfect", "ultimate", "super ultimate"];
 const STAGE_THRESHOLDS = [5e6, 1e7, 2e7, 4e7, 75e6, 125e6, 2e8, 3e8];
 
-const dbPath = process.argv.includes("--db")
-  ? process.argv[process.argv.indexOf("--db") + 1]
-  : defaultDatabasePath();
+const argv = process.argv.slice(2);
+const dbFlagIndex = argv.indexOf("--db");
+const dbPath = dbFlagIndex !== -1 ? argv[dbFlagIndex + 1] : defaultDatabasePath();
+if (dbFlagIndex !== -1) argv.splice(dbFlagIndex, 2);
 
 function fmtTokens(n) {
   if (n >= 1e9) return `${(n / 1e9).toFixed(2)}B`;
@@ -43,6 +45,33 @@ function openReadOnly() {
   const db = new Database(dbPath, { readonly: true });
   db.run("PRAGMA busy_timeout = 5000");
   return db;
+}
+
+const EXPEDITION_KIND_NAMES = { patrol: "短巡逻", field: "数据原野", night: "深夜远征" };
+
+// Read-only care summary for `status`. Uses the care store's read APIs only
+// (getCareSnapshot/getCollection) and always closes the store afterwards;
+// care and expedition writes stay on the sidebar pet page.
+function printCareSummary(partnerId) {
+  const store = createCareStore({ databasePath: dbPath });
+  try {
+    const nowMs = Date.now();
+    const { state, summary, activeExpedition } = store.getCareSnapshot(partnerId, nowMs);
+    const collection = store.getCollection();
+    const r = (v) => Math.round(v);
+    console.log(`care      饱食 ${r(state.satiety)} · 心情 ${r(state.mood)} · 精力 ${r(state.energy)} · 清洁 ${r(state.hygiene)}（${summary.moodLabel}）`);
+    console.log(`bond      亲密 ${r(state.bond)}`);
+    console.log(`fragments 数据碎片 ${collection.fragments} · 装饰 ${collection.unlocked.length} 件 · 成就 ${collection.achievements.length} 项`);
+    if (activeExpedition) {
+      const kind = EXPEDITION_KIND_NAMES[activeExpedition.kind] ?? activeExpedition.kind;
+      const remainMin = Math.ceil(Math.max(0, activeExpedition.endsAt - nowMs) / 60000);
+      console.log(`expedition ${kind}进行中 · 剩余约 ${remainMin} 分钟`);
+    } else {
+      console.log(`expedition 无进行中探险（去侧边栏「宠物」页派出）`);
+    }
+  } finally {
+    store.close();
+  }
 }
 
 function status() {
@@ -85,6 +114,7 @@ function status() {
     if (partner.battle_opponent_node_id) {
       console.log(`          evolution battle pending vs ${nodeLabel(partner.battle_opponent_node_id)}`);
     }
+    printCareSummary(partner.partner_id);
   }
   db.close();
 }
@@ -132,7 +162,7 @@ function partners() {
   db.close();
 }
 
-const [cmd, ...rest] = process.argv.slice(2);
+const [cmd, ...rest] = argv;
 switch (cmd) {
   case "status":
     status();
@@ -164,7 +194,7 @@ switch (cmd) {
     console.log(`magpie-digital-pet CLI
 db: ${dbPath}
 
-  status              pet, gauge and progress
+  status              pet, gauge, progress and read-only care summary
   spawn               hatch a new egg
   freeze | unfreeze   stop / resume growth
   set <id>            pin a Digimon (cheat; no growth while pinned)

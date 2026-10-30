@@ -1,0 +1,106 @@
+// tests/docs-contract.test.mjs
+// Static contract for user-facing docs and the CLI summary (Task 7):
+// README and the settings panel agree on the real database path
+// (<插件目录>\data\pet.db), README documents the new care gameplay, the
+// package version is bumped to 0.4.0, and the CLI status command prints a
+// read-only care summary without gaining any new write command branches.
+
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+const ROOT = dirname(HERE);
+
+const readme = readFileSync(join(ROOT, "README.md"), "utf8");
+const panel = readFileSync(join(ROOT, "ui", "panel.html"), "utf8");
+const cli = readFileSync(join(ROOT, "cli", "pet-cli.mjs"), "utf8");
+const pkg = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8"));
+
+let failures = 0;
+function test(name, fn) {
+  try {
+    fn();
+    console.log(`PASS ${name}`);
+  } catch (error) {
+    failures += 1;
+    console.error(`FAIL ${name}`);
+    console.error(error.message);
+  }
+}
+
+test("package.json version is 0.4.0 and keeps the porting lineage", () => {
+  assert.equal(pkg.version, "0.4.0");
+  assert.match(pkg.description, /@jcendal\/opencode-digital-pet 0\.18\.0/, "must keep upstream attribution");
+  assert.match(pkg.description, /never touches agents' contexts/i, "must keep the no-agent-context promise");
+});
+
+test("README states the database lives at <插件目录>\\data\\pet.db", () => {
+  assert.ok(readme.includes("插件目录"), "README must name the plugin directory");
+  assert.ok(/data[/\\]pet\.db/.test(readme), "README must mention data/pet.db");
+});
+
+test("README documents the new care gameplay on the sidebar pet page", () => {
+  for (const keyword of ["日常照顾", "探险", "每日目标", "装饰", "宠物", "侧边栏"]) {
+    assert.ok(readme.includes(keyword), `README must mention ${keyword}`);
+  }
+});
+
+test("README test section lists every module test plus selftest", () => {
+  for (const file of [
+    "pet-frames.test.mjs",
+    "pet-care-rules.test.mjs",
+    "pet-progression-rules.test.mjs",
+    "pet-care-store.test.mjs",
+    "pet-server-care.test.mjs",
+    "page-contract.test.mjs",
+    "docs-contract.test.mjs",
+    "selftest.mjs",
+  ]) {
+    assert.ok(readme.includes(file), `README test list missing ${file}`);
+  }
+});
+
+test("README keeps the original CLI command documentation", () => {
+  for (const cmd of ["status", "spawn", "freeze", "unfreeze", "events", "partners", "set 4-001"]) {
+    assert.ok(readme.includes(cmd), `README must keep documenting \`${cmd}\``);
+  }
+});
+
+test("settings panel points at the plugin-directory database, not %APPDATA%", () => {
+  assert.ok(!panel.includes("%APPDATA%\\magpie-digital-pet\\pet.db"), "stale %APPDATA% path must be gone");
+  assert.ok(/data[/\\]pet\.db/.test(panel), "panel must mention data/pet.db");
+  assert.ok(panel.includes("插件目录"), "panel must name the plugin directory");
+});
+
+test("settings panel explains care and expeditions happen on the sidebar pet page", () => {
+  assert.match(panel, /宠物页/, "panel must point to the sidebar pet page");
+  assert.match(panel, /照顾/, "panel must mention care actions");
+  assert.match(panel, /探险/, "panel must mention expeditions");
+});
+
+test("CLI status prints the four read-only summary lines", () => {
+  for (const label of ["care", "bond", "fragments", "expedition"]) {
+    const re = new RegExp(`console\\.log\\(\\\`${label}\\s`);
+    assert.ok(re.test(cli), `pet-cli.mjs must print a \`${label}\` summary line`);
+  }
+});
+
+test("CLI summary is read-only: no new write command branches", () => {
+  const cases = [...cli.matchAll(/case "([^"]+)":/g)].map((m) => m[1]);
+  assert.deepEqual(
+    [...cases].sort(),
+    ["events", "freeze", "partners", "set", "spawn", "status", "unfreeze"],
+    "the command switch must keep exactly the original seven commands",
+  );
+  for (const writeCall of ["performAction(", "startExpedition(", "claimExpedition(", "equipDecoration("]) {
+    assert.ok(!cli.includes(writeCall), `CLI must not call ${writeCall}`);
+  }
+});
+
+if (failures > 0) {
+  console.error(`\n${failures} test(s) failed`);
+  process.exit(1);
+}
+console.log("\nall tests passed");
