@@ -360,7 +360,9 @@ git commit -m "Document and summarize pet care progression"
 
 **Files:**
 - Modify: `tests/selftest.mjs`（只在发现集成缺口时）
-- Create: `tests/e2e-page.test.mjs`（用 Playwright Core + 本机 Edge，可选跳过条件明确）
+- Create: `tests/e2e-page.test.mjs`（用 node:http 做核心端到端；Playwright Core + 本机 Edge 的真实浏览器段在显式提供本机路径时运行，否则明确跳过）
+- Modify: `README.md`（把 e2e 命令列入测试说明）
+- Modify: `tests/docs-contract.test.mjs`（把 e2e 测试纳入文档契约）
 
 **Interfaces:**
 - Consumes: 前 7 个任务的全部接口。
