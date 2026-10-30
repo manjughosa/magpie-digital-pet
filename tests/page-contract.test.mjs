@@ -128,6 +128,21 @@ test("override action frames fall back to regular state frames when unavailable"
     "empty filtered override must fall back to walk/care frames before drawFallback");
 });
 
+test("renderScene draws from a local frame set, never bare window.frames", () => {
+  const start = js.indexOf("function renderScene");
+  const end = js.indexOf("function restartAnimation");
+  assert.ok(start !== -1 && end > start, "expected renderScene");
+  const scene = js.slice(start, end);
+  assert.ok(!/(?<![.\w])frames\[/.test(scene),
+    "renderScene must not index bare `frames` (resolves to window.frames in browsers)");
+  const local = scene.match(/const\s+(\w+)\s*=\s*s\?\.frames\s*\|\|\s*\{\}/);
+  assert.ok(local, "renderScene must define a local frame set from s?.frames");
+  assert.ok(scene.includes(`pickFrameNames(s, ${local[1]})`),
+    "pickFrameNames must receive the local frame set");
+  assert.ok(scene.includes(`drawContent(${local[1]}[`),
+    "drawContent must draw from the same local frame set");
+});
+
 if (failures > 0) {
   console.error(`\n${failures} test(s) failed`);
   process.exit(1);

@@ -257,9 +257,10 @@ function renderScene() {
   const isEgg = stage === 0 || sprite === "egg";
   if (isEgg) drawGlow(hue);
   const bob = motionOK() && isEgg ? Math.round(Math.sin(tick * 0.9) * 2) : 0;
-  const available = pickFrameNames(s, s?.frames || {});
+  const frameSet = s?.frames || {};
+  const available = pickFrameNames(s, frameSet);
   if (available.length > 0) {
-    drawContent(frames[available[tick % available.length]], hue, bob);
+    drawContent(frameSet[available[tick % available.length]], hue, bob);
   } else if (s?.partner) {
     drawFallback(`${s.partner.node.id}:${stage}`, hue, bob);
   }
