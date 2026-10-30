@@ -68,7 +68,7 @@ test("reopening the database runs migrations once and keeps data", () => {
     .map((row) => row.name)
     .sort();
   raw.close();
-  assert.equal(version, 1);
+  assert.equal(version, 2);
   assert.deepEqual(tables, [
     "magpie_pet_achievements",
     "magpie_pet_care_events",
@@ -76,6 +76,7 @@ test("reopening the database runs migrations once and keeps data", () => {
     "magpie_pet_daily",
     "magpie_pet_expeditions",
     "magpie_pet_inventory",
+    "magpie_pet_names",
   ]);
 });
 
@@ -95,6 +96,17 @@ test("getCareSnapshot creates the default state for an unknown partner", () => {
     assert.equal(goal.done, false);
     assert.equal(goal.rewardClaimed, false);
   }
+  store.close();
+});
+
+test("rename persists per partner and validates the input", () => {
+  const store = createCareStore({ databasePath: freshDbPath() });
+  const named = store.renamePet("p1", "  小  豆子  ", 1000);
+  assert.deepEqual(named, { ok: true, name: "小 豆子" });
+  assert.equal(store.getPetName("p1"), "小 豆子");
+  assert.equal(store.getPetName("p2"), null);
+  assert.deepEqual(store.renamePet("p1", "", 1001), { ok: false, reason: "invalid-name" });
+  assert.equal(store.getPetName("p1"), "小 豆子");
   store.close();
 });
 

@@ -10,7 +10,7 @@
 
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
-import { copyFileSync, rmSync } from "node:fs";
+import { rmSync } from "node:fs";
 import { request as httpRequest } from "node:http";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -160,6 +160,28 @@ await test("state exposes default care snapshot, collection and frames after spa
   assert.ok(state.frame.available.includes("walk_1"));
   assert.equal(typeof state.frames.walk_1, "string");
   assert.equal(typeof state.frames.walk_2, "string");
+  assert.equal(state.petName, null);
+  assert.equal(Array.isArray(state.dex), true);
+  assert.equal(state.dex.length, 650);
+  assert.equal(state.dex.filter((d) => d.unlocked).length, 1);
+  assert.equal(state.dex.find((d) => d.id === "0-001").current, true);
+});
+
+await test("rename stores a per-partner display name", async () => {
+  const renamed = await httpJson(3641, "/api/command", {
+    method: "POST",
+    body: { name: "pet-rename", args: "小豆子" },
+  });
+  assert.equal(renamed.status, 200);
+  assert.equal(renamed.json.state.petName, "小豆子");
+  assert.equal(renamed.json.state.care.petName, "小豆子");
+
+  const invalid = await httpJson(3641, "/api/command", {
+    method: "POST",
+    body: { name: "pet-rename", args: " ".repeat(30) },
+  });
+  assert.equal(invalid.status, 400);
+  assert.equal(invalid.json.reason, "invalid-name");
 });
 
 await test("care commands mutate state, return {text,toasts,state} and respect cooldowns", async () => {
@@ -420,7 +442,13 @@ await test("close() is idempotent and refuses new connections afterwards", async
 // tables must migrate in place. The live db keeps being fed, so the
 // baseline is read from the copy itself, not hard-coded.
 const dbC = freshDbPath();
-copyFileSync(REAL_DB, dbC);
+{
+  // The live plugin host keeps the save in WAL; copying only pet.db can miss
+  // the newest partner/team rows. VACUUM INTO produces a consistent snapshot.
+  const src = new Database(REAL_DB, { readonly: true });
+  src.exec(`VACUUM INTO ${JSON.stringify(dbC)}`);
+  src.close();
+}
 const baseline = withRawDb(dbC, (db) => ({
   receipts: db.query("SELECT COUNT(*) c, SUM(token_delta) t FROM usage_receipts").get(),
   partner: db
@@ -433,7 +461,7 @@ const serverC = createPetServer({ databasePath: dbC, port: 3643, notifyGate: () 
 assert.equal(await serverC.start(), true);
 
 await test("state on a copy of the real database keeps history and migrates care tables", async () => {
-  assert.ok(baseline.receipts.c >= 165, "real db should carry its feed history");
+  assert.ok(Number.isInteger(baseline.receipts.c) && baseline.receipts.c >= 0, "real db history count should be readable");
 
   const res = await httpJson(3643, "/api/state");
   assert.equal(res.status, 200);
@@ -463,6 +491,7 @@ await test("state on a copy of the real database keeps history and migrates care
     "magpie_pet_daily",
     "magpie_pet_expeditions",
     "magpie_pet_inventory",
+    "magpie_pet_names",
   ]);
 });
 

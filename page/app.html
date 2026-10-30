@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>宠物</title>
+<link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="app.css">
 </head>
 <body>
@@ -27,6 +28,10 @@
         <span class="badge warn" id="pet-frozen-badge" hidden>冻结中 · 不生长</span>
       </div>
       <p class="status-line" id="status-line">读取中…</p>
+      <div class="rename-row">
+        <input id="pet-rename-input" maxlength="20" placeholder="给它起个名字" aria-label="宠物名字">
+        <button type="button" data-command="pet-rename">命名</button>
+      </div>
       <div class="evo">
         <div class="bar evo-bar"><i id="evo-fill"></i></div>
         <div class="bar-note small">
@@ -103,6 +108,19 @@
       <button type="button" data-command="pet-decoration-equip" data-args="night">夜空背景 · 25 碎片</button>
       <button type="button" data-command="pet-decoration-equip" data-args="terminal">终端背景 · 40 碎片</button>
     </div>
+  </section>
+
+  <section id="dex" aria-label="图鉴与切换">
+    <h2>图鉴与切换</h2>
+    <div class="dex-tools">
+      <input id="dex-search" placeholder="搜索名字或 ID" aria-label="搜索图鉴">
+      <select id="dex-filter" aria-label="筛选图鉴">
+        <option value="unlocked">只看已解锁</option>
+        <option value="all">全部图鉴</option>
+        <option value="locked">只看未解锁</option>
+      </select>
+    </div>
+    <div class="dex-grid" id="dex-grid"></div>
   </section>
 
   <section aria-label="喂食记录">

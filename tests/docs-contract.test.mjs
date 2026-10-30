@@ -30,8 +30,8 @@ function test(name, fn) {
   }
 }
 
-test("package.json version is 0.4.0 and keeps the porting lineage", () => {
-  assert.equal(pkg.version, "0.4.0");
+test("package.json version is 0.5.0 and keeps the porting lineage", () => {
+  assert.equal(pkg.version, "0.5.0");
   assert.match(pkg.description, /@jcendal\/opencode-digital-pet 0\.18\.0/, "must keep upstream attribution");
   assert.match(pkg.description, /never touches agents' contexts/i, "must keep the no-agent-context promise");
 });

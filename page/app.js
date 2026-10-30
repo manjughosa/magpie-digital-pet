@@ -102,6 +102,14 @@ const ACTION_FRAMES = {
   "pet-rest": ["sleep_1", "sleep_2"],
   "pet-pet-egg": ["walk_2", "walk_1"],
 };
+const ACTION_EFFECTS = {
+  "pet-feed-snack": { color: "#f59e0b", shape: "crumb" },
+  "pet-play": { color: "#facc15", shape: "star" },
+  "pet-clean": { color: "#38bdf8", shape: "drop" },
+  "pet-rest": { color: "#a78bfa", shape: "sleep" },
+  "pet-pet-egg": { color: "#fb7185", shape: "heart" },
+};
+let actionEffect = null;
 
 function habitatVariant() {
   const theme = lastState?.collection?.equippedTheme;
@@ -208,6 +216,67 @@ function drawContent(content, hue, bob) {
   });
 }
 
+function drawActionEffect() {
+  if (!actionEffect) return;
+  const now = Date.now();
+  const elapsed = now - actionEffect.startedAt;
+  const total = 1400;
+  if (elapsed >= total) {
+    actionEffect = null;
+    return;
+  }
+  const progress = elapsed / total;
+  const style = actionEffect.style;
+  const rnd = mulberry32(hashString(`${actionEffect.kind}:${actionEffect.startedAt}`));
+  ctx.save();
+  ctx.globalAlpha = Math.max(0, 1 - progress * 0.85);
+  ctx.fillStyle = style.color;
+  ctx.strokeStyle = style.color;
+  ctx.lineWidth = 2;
+  for (let i = 0; i < 12; i += 1) {
+    const angle = rnd() * Math.PI * 2;
+    const radius = 28 + rnd() * 52 + progress * 28;
+    const x = CW / 2 + Math.cos(angle) * radius;
+    const y = GROUND_Y - 38 - Math.sin(angle) * radius * 0.42 - progress * 34;
+    const size = 3 + rnd() * 3;
+    if (style.shape === "star") {
+      ctx.beginPath();
+      for (let p = 0; p < 8; p += 1) {
+        const a = (Math.PI / 4) * p;
+        const r = p % 2 === 0 ? size * 1.7 : size * 0.65;
+        const px = x + Math.cos(a) * r;
+        const py = y + Math.sin(a) * r;
+        if (p === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+      ctx.fill();
+    } else if (style.shape === "drop") {
+      ctx.beginPath();
+      ctx.ellipse(x, y, size * 0.7, size * 1.3, 0, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (style.shape === "sleep") {
+      ctx.font = `700 ${Math.round(size * 5)}px system-ui`;
+      ctx.fillText("Z", x, y);
+    } else if (style.shape === "heart") {
+      ctx.beginPath();
+      ctx.arc(x - size * 0.45, y, size * 0.55, 0, Math.PI * 2);
+      ctx.arc(x + size * 0.45, y, size * 0.55, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(x - size, y + size * 0.25);
+      ctx.lineTo(x + size, y + size * 0.25);
+      ctx.lineTo(x, y + size * 1.35);
+      ctx.closePath();
+      ctx.fill();
+    } else {
+      ctx.beginPath();
+      ctx.arc(x, y, size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  ctx.restore();
+}
+
 // 缺帧兜底：按 node.id + stage 生成稳定的对称像素团，绝不空白。
 function drawFallback(key, hue, bob) {
   const rnd = mulberry32(hashString(`fallback:${key}`));
@@ -264,6 +333,7 @@ function renderScene() {
   } else if (s?.partner) {
     drawFallback(`${s.partner.node.id}:${stage}`, hue, bob);
   }
+  drawActionEffect();
 }
 
 // 低帧率循环：2.5fps 足够像素动画；减少动态偏好时完全停止循环。
@@ -326,8 +396,10 @@ function paintHero(s) {
     $("dex-link").hidden = true;
     return;
   }
-  $("pet-name").textContent = p.node.nameEn;
-  $("pet-jp").textContent = p.node.nameJp;
+  $("pet-name").textContent = s.petName || p.node.nameEn;
+  $("pet-jp").textContent = s.petName ? `${p.node.nameEn} · ${p.node.nameJp}` : p.node.nameJp;
+  const renameInput = $("pet-rename-input");
+  if (renameInput && document.activeElement !== renameInput) renameInput.value = s.petName || "";
   $("pet-stage-badge").textContent = `gen ${p.generation} · ${p.stageName}`;
   $("pet-pin-badge").hidden = !s.pinned;
   $("pet-frozen-badge").hidden = !s.frozen;
@@ -401,6 +473,58 @@ function paintCollection(s) {
     else if (unlocked.has(id)) btn.textContent = `${btn.dataset.label || ""} · 点击装备`;
     else btn.textContent = `${btn.dataset.label || ""} · ${price} 碎片`;
   });
+}
+
+let dexPaintKey = "";
+function paintDex(s) {
+  const grid = $("dex-grid");
+  if (!grid) return;
+  const query = ($("dex-search")?.value || "").trim().toLowerCase();
+  const filter = $("dex-filter")?.value || "unlocked";
+  const items = (s.ok && Array.isArray(s.dex) ? s.dex : []).filter((item) => {
+    if (filter === "unlocked" && !item.unlocked) return false;
+    if (filter === "locked" && item.unlocked) return false;
+    if (!query) return true;
+    return [item.id, item.nameEn, item.nameJp].some((v) => String(v || "").toLowerCase().includes(query));
+  });
+  const key = JSON.stringify([query, filter, items.map((i) => [i.id, i.unlocked, i.current])]);
+  if (key === dexPaintKey) return;
+  dexPaintKey = key;
+  grid.replaceChildren();
+  if (!items.length) {
+    const empty = document.createElement("div");
+    empty.className = "empty";
+    empty.textContent = "没有匹配的图鉴。";
+    grid.append(empty);
+    return;
+  }
+  for (const item of items) {
+    const card = document.createElement("div");
+    card.className = `dex-card${item.unlocked ? "" : " locked"}${item.current ? " current" : ""}`;
+    const title = document.createElement("b");
+    title.textContent = item.nameEn;
+    const jp = document.createElement("span");
+    jp.className = "muted small";
+    jp.textContent = `${item.nameJp} · ${item.id} · stage ${item.stage}`;
+    const status = document.createElement("span");
+    status.className = "dex-status";
+    if (!item.unlocked) {
+      status.textContent = "未解锁";
+      card.append(title, jp, status);
+      grid.append(card);
+      continue;
+    }
+    status.textContent = item.current ? "当前宠物" : "已解锁";
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.dataset.command = "digital-pet-set";
+    btn.dataset.args = item.id;
+    btn.textContent = item.current ? "正在展示" : "切换";
+    btn.disabled = item.current;
+    btn.addEventListener("click", () => command("digital-pet-set", item.id));
+    card.append(title, jp, status, btn);
+    grid.append(card);
+  }
 }
 
 function paintExpedition(s) {
@@ -486,6 +610,7 @@ function paint(s) {
   paintCareBars(s);
   paintDaily(s);
   paintCollection(s);
+  paintDex(s);
   paintExpedition(s);
   paintLists(s);
   updateButtons();
@@ -621,6 +746,9 @@ async function command(name, args) {
     if (ACTION_FRAMES[name]) {
       override = { names: ACTION_FRAMES[name], until: Date.now() + 2400 };
     }
+    if (ACTION_EFFECTS[name]) {
+      actionEffect = { kind: name, style: ACTION_EFFECTS[name], startedAt: Date.now() };
+    }
     if (j?.state) paint(j.state);
   } catch (e) {
     say(`命令失败：${e?.message ?? e}`);
@@ -641,6 +769,15 @@ document.querySelectorAll("[data-command]").forEach((btn) => {
       : btn.textContent;
   btn.addEventListener("click", () => {
     const name = btn.dataset.command;
+    if (name === "pet-rename") {
+      const value = $("pet-rename-input").value.trim().replace(/\s+/g, " ");
+      if (value.length < 1 || value.length > 20) {
+        say("名字需要 1–20 个字符。");
+        return;
+      }
+      command(name, value);
+      return;
+    }
     if (name === "digital-pet-set") {
       const id = $("set-id").value.trim();
       if (!/^[0-9]-[0-9]{1,3}$/.test(id)) {
@@ -661,6 +798,15 @@ document.querySelectorAll("[data-command]").forEach((btn) => {
     }
     command(name, btn.dataset.args);
   });
+});
+
+$("dex-search")?.addEventListener("input", () => {
+  dexPaintKey = "";
+  if (lastState) paintDex(lastState);
+});
+$("dex-filter")?.addEventListener("change", () => {
+  dexPaintKey = "";
+  if (lastState) paintDex(lastState);
 });
 
 // ---------- polling ----------

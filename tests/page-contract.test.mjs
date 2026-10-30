@@ -128,6 +128,16 @@ test("override action frames fall back to regular state frames when unavailable"
     "empty filtered override must fall back to walk/care frames before drawFallback");
 });
 
+test("dex selection, rename controls and action effects are wired", () => {
+  for (const id of ["dex", "dex-search", "dex-filter", "dex-grid", "pet-rename-input"]) {
+    assert.ok(html.includes(`id="${id}"`), `missing #${id}`);
+  }
+  assert.ok(html.includes('data-command="pet-rename"'), "rename button missing");
+  assert.ok(js.includes("ACTION_EFFECTS"), "per-action canvas effects missing");
+  assert.ok(js.includes("paintDex"), "dex painter missing");
+  assert.ok(js.includes("pet-rename"), "rename command wiring missing");
+});
+
 test("renderScene draws from a local frame set, never bare window.frames", () => {
   const start = js.indexOf("function renderScene");
   const end = js.indexOf("function restartAnimation");

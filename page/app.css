@@ -364,3 +364,50 @@ footer {
     transition: none !important;
   }
 }
+
+/* ---------------- 命名与图鉴 ---------------- */
+.rename-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+.rename-row input,
+.dex-tools input,
+.dex-tools select {
+  font: inherit;
+  color: var(--fg);
+  background: color-mix(in srgb, var(--panel) 82%, var(--fg) 4%);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 6px 10px;
+}
+.rename-row input { flex: 1; min-width: 0; }
+.dex-tools {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.dex-tools input { flex: 1 1 180px; }
+.dex-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+  gap: 8px;
+  max-height: 420px;
+  overflow: auto;
+  padding-right: 2px;
+}
+.dex-card {
+  display: grid;
+  gap: 4px;
+  align-content: start;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--panel) 88%, var(--fg) 3%);
+}
+.dex-card.current { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+.dex-card.locked { opacity: 0.46; filter: saturate(0.5); }
+.dex-card b { font-size: 12.5px; overflow-wrap: anywhere; }
+.dex-status { font-size: 11px; color: var(--muted); }
+.dex-card button { padding: 4px 10px; font-size: 12px; }
