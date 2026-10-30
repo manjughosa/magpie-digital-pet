@@ -21,12 +21,14 @@ magpie 网关 ──记账──> /v1/magpie/usage/requests
               本插件（magpie 的 Bun 宿主进程内）
                           │  合成 message.updated 事件
                           ▼
-              digital-pet 引擎（原版）──> data\pet.db
+              digital-pet 引擎（原版）──> 用户目录存档（Windows: %APPDATA%\magpie-digital-pet\pet.db）
                           ▲
         侧边栏页面 <── 本地服务 127.0.0.1:3571（读同一库）
 ```
 
 不走中间件（magpie 的中间件沙箱无 IO），不解析响应体（magpie 已经替你把每个请求的 token 数好了，流式也准）。多个宿主进程同时跑 watcher 也安全：引擎按 route_id 去重，SQLite 走 WAL；页面服务固定端口，谁先绑谁服务，端口被短命宿主占着时后来者定期重试接管。
+
+成长阈值固定为原版 2 倍（例如 egg 10M tokens、baby I 20M tokens），配置写在用户目录 `opencode-digital-pet.json`；插件启动时会自动恢复这组数值，代码更新不会重置宠物。
 
 ## 安装
 
@@ -60,13 +62,13 @@ CLI 只提供只读摘要；日常照顾、探险和装饰装备等写操作请�
 | `backfill` | `false` | 补录 magpie 已记的 30 天用量（蛋立刻孵化）。改后需重载插件 |
 | `pollSeconds` | `60` | 轮询间隔（15–3600s）。改后需重载插件 |
 | `gatewayUrl` | `http://127.0.0.1:3425` | 网关地址 |
-| `dbPath` | `<插件目录>\data\pet.db` | 数据库路径（放插件目录而非 %APPDATA%：宿主进程的用户身份可能与你不同） |
+| `dbPath` | `%APPDATA%\magpie-digital-pet\pet.db`（Windows） | 个人存档路径；默认与插件代码目录分离，更新插件不会动存档。可显式覆盖 |
 | `port` | `3571` | 侧边栏页面服务的本地端口 |
 
 ## 数据
 
-- 数据库：`<插件目录>\data\pet.db`（SQLite，WAL，与 CLI / 页面并发安全）
-- 轮询游标：同目录 `watcher-state.json`（删掉它 + 开 `backfill` 可重算历史）
+- 数据库：Windows 默认 `%APPDATA%\magpie-digital-pet\pet.db`（SQLite，WAL，与 CLI / 页面并发安全）；其他平台为 `~/.config/magpie-digital-pet/pet.db`。首次启动会自动从旧版 `<插件目录>\data\pet.db` 迁移，旧文件保留作备份，不删除。
+- 轮询游标：存档同目录 `watcher-state.json`（删掉它 + 开 `backfill` 可重算历史）
 
 ## 红线（与策划书一致）
 
@@ -105,4 +107,4 @@ bun tests/e2e-page.test.mjs
 magpie plugin rm magpie-digital-pet
 ```
 
-数据留在 `<插件目录>\data\`，想全删手动删目录即可。
+个人数据留在用户目录（Windows 为 `%APPDATA%\magpie-digital-pet\`），与插件代码目录分开；想全删手动删除该目录即可。旧版插件目录下的 `data\` 只保留迁移前备份。

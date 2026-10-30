@@ -58,12 +58,15 @@ test("app.css provides both light and dark themes", () => {
   assert.match(css, /\.theme-dark\b/);
 });
 
-test("every button in app.html is a data-command button", () => {
+test("every gameplay button is a data-command button; archive tabs are separate", () => {
   const buttons = [...html.matchAll(/<button\b[^>]*>/gi)].map((m) => m[0]);
-  assert.ok(buttons.length >= 10, "expected a full set of command buttons");
+  assert.ok(buttons.length >= 10, "expected a full set of buttons");
   for (const btn of buttons) {
+    if (/\bclass="[^"]*tab-btn/.test(btn)) continue;
     assert.ok(/\bdata-command="[^"]+"/.test(btn), `button missing data-command: ${btn}`);
   }
+  const tabs = [...html.matchAll(/data-tab="([^"]+)"/g)].map((m) => m[1]);
+  assert.deepEqual(tabs, ["dex", "events", "gens"]);
 });
 
 test("all pet-* and digital-pet-* commands have buttons", () => {
@@ -101,16 +104,16 @@ test("expedition and decoration buttons carry static data-args", () => {
   }
 });
 
-test("command() finally re-enables every button before updateButtons()", () => {
+test("command() finally re-enables command buttons before updateButtons()", () => {
   const start = js.indexOf("async function command(");
   assert.ok(start !== -1, "command() must exist");
   const finallyIdx = js.indexOf("finally", start);
   assert.ok(finallyIdx !== -1, "command() must have a finally block");
   const body = js.slice(finallyIdx, finallyIdx + 400);
-  const enableIdx = body.search(/querySelectorAll\("button"\)[\s\S]{0,100}?disabled\s*=\s*false/);
+  const enableIdx = body.search(/commandButtons\(\)[\s\S]{0,100}?disabled\s*=\s*false/);
   const updateIdx = body.indexOf("updateButtons()");
   assert.ok(/busy\s*=\s*false/.test(body), "finally must keep clearing the busy re-entry guard");
-  assert.ok(enableIdx !== -1, "finally must first re-enable all buttons (incl. #manage) before state-based disabling");
+  assert.ok(enableIdx !== -1, "finally must first re-enable command buttons before state-based disabling");
   assert.ok(updateIdx !== -1, "finally must call updateButtons()");
   assert.ok(enableIdx < updateIdx, "re-enable must run before updateButtons() so it can re-disable per state");
 });

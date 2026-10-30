@@ -723,10 +723,12 @@ function updateButtons() {
 
 let busy = false;
 
+const commandButtons = () => document.querySelectorAll("[data-command]");
+
 async function command(name, args) {
   if (busy) return;
   busy = true;
-  document.querySelectorAll("button").forEach((b) => (b.disabled = true));
+  commandButtons().forEach((b) => (b.disabled = true));
   try {
     const r = await fetch("/api/command", {
       method: "POST",
@@ -754,8 +756,8 @@ async function command(name, args) {
     say(`命令失败：${e?.message ?? e}`);
   } finally {
     busy = false;
-    // 先恢复所有按钮（含 #manage 管理区），再让 updateButtons 按状态重新禁用
-    document.querySelectorAll("button").forEach((b) => (b.disabled = false));
+    // 只恢复命令按钮，档案 tab 不参与命令禁用状态
+    commandButtons().forEach((b) => (b.disabled = false));
     updateButtons();
   }
 }
@@ -807,6 +809,22 @@ $("dex-search")?.addEventListener("input", () => {
 $("dex-filter")?.addEventListener("change", () => {
   dexPaintKey = "";
   if (lastState) paintDex(lastState);
+});
+
+// ---------- archive tabs ----------
+
+document.querySelectorAll(".tab-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const tab = btn.dataset.tab;
+    document.querySelectorAll(".tab-btn").forEach((b) => {
+      const active = b === btn;
+      b.classList.toggle("active", active);
+      b.setAttribute("aria-selected", active ? "true" : "false");
+    });
+    document.querySelectorAll(".tab-panel").forEach((panel) => {
+      panel.hidden = panel.id !== `panel-${tab}`;
+    });
+  });
 });
 
 // ---------- polling ----------

@@ -16,16 +16,17 @@ import { Database } from "bun:sqlite";
 
 const HERE = import.meta.dir;
 const ADAPTER = join(HERE, "..", "lib", "pet.adapter.mjs");
-const { createPetAdapter, nodeById, defaultDatabasePath } = await import(ADAPTER);
+const { createPetAdapter, nodeById, defaultDatabasePath, migrateLegacyDatabase } = await import(ADAPTER);
 const { createCareStore } = await import(join(HERE, "..", "lib", "pet.care-store.mjs"));
 
 const STAGE_NAMES = ["egg", "baby I", "baby II", "child", "adult", "perfect", "ultimate", "super ultimate"];
-const STAGE_THRESHOLDS = [5e6, 1e7, 2e7, 4e7, 75e6, 125e6, 2e8, 3e8];
+const STAGE_THRESHOLDS = [1e7, 2e7, 4e7, 8e7, 15e7, 25e7, 4e8, 6e8];
 
 const argv = process.argv.slice(2);
 const dbFlagIndex = argv.indexOf("--db");
 const dbPath = dbFlagIndex !== -1 ? argv[dbFlagIndex + 1] : defaultDatabasePath();
 if (dbFlagIndex !== -1) argv.splice(dbFlagIndex, 2);
+else migrateLegacyDatabase(dbPath);
 
 function fmtTokens(n) {
   if (n >= 1e9) return `${(n / 1e9).toFixed(2)}B`;

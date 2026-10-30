@@ -71,17 +71,32 @@ body {
 }
 
 main {
-  max-width: 920px;
+  max-width: 1080px;
   margin: 0 auto;
-  display: grid;
-  gap: 14px;
 }
+
+.hud-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(280px, 0.85fr);
+  gap: 12px;
+  align-items: start;
+  margin-top: 12px;
+}
+
+.hud-main,
+.hud-side {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+
+.archive { margin-top: 12px; }
 
 .muted { color: var(--muted); }
 .small { font-size: 12px; }
 
 .topbar {
-  max-width: 920px;
+  max-width: 1080px;
   margin: 0 auto 12px;
   display: flex;
   align-items: baseline;
@@ -91,20 +106,30 @@ main {
 h1 { font-size: 16px; margin: 0; }
 .topbar p { margin: 0; }
 h2 {
-  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
   margin: 0 0 10px;
-  color: var(--muted);
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  color: var(--fg);
+  font-weight: 650;
+  letter-spacing: 0.01em;
+}
+h2::before {
+  content: "";
+  width: 4px;
+  height: 14px;
+  border-radius: 2px;
+  background: var(--accent);
 }
 
 section {
+  min-width: 0;
   background: var(--card);
   border: 1px solid var(--line);
-  border-radius: 16px;
-  padding: 16px 18px;
-  box-shadow: var(--shadow);
+  border-radius: 12px;
+  padding: 14px 16px;
+  box-shadow: 0 4px 18px rgba(90, 70, 30, 0.08);
 }
 
 /* ---------------- 栖息地 hero ---------------- */
@@ -112,18 +137,24 @@ section {
 .habitat {
   padding: 0;
   overflow: hidden;
+  border-width: 2px;
 }
 
 .habitat .sky {
   position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  height: clamp(220px, 30vw, 330px);
   background: linear-gradient(180deg, var(--sky-top), var(--sky-bottom));
   border-bottom: 1px solid var(--line);
 }
 
 #pet-canvas {
   display: block;
-  width: 100%;
-  height: auto;
+  width: auto;
+  max-width: 100%;
+  height: 100%;
   aspect-ratio: 288 / 176;
   image-rendering: pixelated;
 }
@@ -314,6 +345,14 @@ li.gen .r { color: var(--muted); font-size: 11px; margin-left: auto; }
 
 /* ---------------- 管理 ---------------- */
 
+#manage {
+  border-left: 3px solid var(--accent);
+}
+#manage .btn-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+#manage .btn-row button { min-height: 36px; }
 #set-row { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; align-items: center; }
 #set-id {
   font: inherit;
@@ -336,17 +375,14 @@ a:hover { text-decoration: underline; }
 #say.ok { color: var(--ok); }
 
 footer {
-  max-width: 920px;
+  max-width: 1080px;
   margin: 26px auto 0;
 }
 
 /* ---------------- 响应式 ---------------- */
 
-@media (min-width: 720px) {
-  main {
-    grid-template-columns: 1fr 1fr;
-  }
-  .habitat { grid-column: 1 / -1; }
+@media (max-width: 900px) {
+  .hud-grid { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 620px) {
@@ -411,3 +447,37 @@ footer {
 .dex-card b { font-size: 12.5px; overflow-wrap: anywhere; }
 .dex-status { font-size: 11px; color: var(--muted); }
 .dex-card button { padding: 4px 10px; font-size: 12px; }
+
+/* ---------------- 档案 tabs ---------------- */
+.tab-bar {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin: -14px -16px 12px;
+  padding: 0 10px;
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--card-2) 82%, transparent);
+  border-radius: 10px 10px 0 0;
+}
+.tab-btn {
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted);
+  padding: 10px 12px 9px;
+  box-shadow: none;
+}
+.tab-btn:hover { color: var(--fg); }
+.tab-btn.active {
+  color: var(--fg);
+  border-bottom-color: var(--accent);
+  background: transparent;
+}
+.tab-panel {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.tab-panel[hidden] { display: none; }
