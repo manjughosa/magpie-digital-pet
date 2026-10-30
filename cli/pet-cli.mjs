@@ -20,7 +20,7 @@ const { createPetAdapter, nodeById, defaultDatabasePath, migrateLegacyDatabase }
 const { createCareStore } = await import(join(HERE, "..", "lib", "pet.care-store.mjs"));
 
 const STAGE_NAMES = ["egg", "baby I", "baby II", "child", "adult", "perfect", "ultimate", "super ultimate"];
-const STAGE_THRESHOLDS = [1e7, 2e7, 4e7, 8e7, 15e7, 25e7, 4e8, 6e8];
+const STAGE_THRESHOLDS = [5e6, 1e7, 2e7, 4e7, 75e6, 125e6, 2e8, 3e8];
 
 const argv = process.argv.slice(2);
 const dbFlagIndex = argv.indexOf("--db");

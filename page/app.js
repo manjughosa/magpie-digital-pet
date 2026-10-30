@@ -3,6 +3,7 @@
 "use strict";
 
 const $ = (id) => document.getElementById(id);
+const apiHeaders = () => ({ "x-magpie-pet-token": window.PET_TOKEN || "" });
 
 const fmt = (n) => {
   n = Number(n) || 0;
@@ -755,7 +756,7 @@ async function command(name, args) {
   try {
     const r = await fetch("/api/command", {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", ...apiHeaders() },
       body: JSON.stringify({ name, args }),
     });
     const j = await r.json().catch(() => null);
@@ -872,7 +873,7 @@ document.querySelectorAll(".tab-btn").forEach((btn) => {
 
 async function load() {
   try {
-    const r = await fetch("/api/state", { cache: "no-store" });
+    const r = await fetch("/api/state", { cache: "no-store", headers: apiHeaders() });
     paint(await r.json());
   } catch (e) {
     say(`刷新失败：${e?.message ?? e}`);
