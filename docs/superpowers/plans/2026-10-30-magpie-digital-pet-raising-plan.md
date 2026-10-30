@@ -368,29 +368,29 @@ git commit -m "Document and summarize pet care progression"
 - Consumes: 前 7 个任务的全部接口。
 - Produces: 可重复的端到端验证命令和真实截图。
 
-- [ ] **Step 1: Write the failing end-to-end test**
+- [x] **Step 1: Write the failing end-to-end test**
 
 使用当前真实 `data/pet.db` 的临时副本启动服务，执行一次 snack、一次 clean、开始并领取一个将时长缩短到测试用毫秒的探险（通过测试端口/注入参数，不改生产数值），断言 `/api/state` 读回状态、事件、碎片与现役 Digiegg。
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `bun tests/e2e-page.test.mjs`  
 Expected: 如果服务未暴露可测试的时间注入，则 FAIL；不得为了通过测试改掉生产时长常量。
 
-- [ ] **Step 3: Implement minimal test hook**
+- [x] **Step 3: Implement minimal test hook**
 
 只允许测试显式传入 `expeditionScale` 或 `nowMs`；生产默认不改变设计稿的 5/15/30 分钟。
 
-- [ ] **Step 4: Run all tests**
+- [x] **Step 4: Run all tests**
 
 Run: `bun tests/pet-frames.test.mjs && bun tests/pet-care-rules.test.mjs && bun tests/pet-progression-rules.test.mjs && bun tests/pet-care-store.test.mjs && bun tests/pet-server-care.test.mjs && bun tests/page-contract.test.mjs && bun tests/docs-contract.test.mjs && bun tests/e2e-page.test.mjs && bun tests/selftest.mjs`  
 Expected: 全部 PASS，自检 26/26。
 
-- [ ] **Step 5: Verify the real rendered page**
+- [x] **Step 5: Verify the real rendered page**
 
 用 Playwright Core + `C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe` 打开本地服务，分别截取浅色 1440px 与浅色窄视口；确认标题、像素宠物、五项状态、行动按钮可见，页面 console error 为 0。
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add tests/e2e-page.test.mjs tests/selftest.mjs

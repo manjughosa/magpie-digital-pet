@@ -86,7 +86,17 @@ bun tests/pet-care-store.test.mjs          # 养成 SQLite 存储
 bun tests/pet-server-care.test.mjs         # 页面 API 与安全
 bun tests/page-contract.test.mjs           # 页面结构契约
 bun tests/docs-contract.test.mjs           # 文档与 CLI 摘要契约
+bun tests/e2e-page.test.mjs                # 真实存档副本端到端；浏览器段见下
 bun tests/selftest.mjs                     # 26 项离线自检（假网关 + 临时库 + 页面服务 + 端口接管）
+```
+
+端到端测试的核心段始终运行；真实浏览器段只有显式提供本机 Playwright Core 与浏览器路径时才运行，并在临时目录保存截图：
+
+```sh
+PET_E2E_PLAYWRIGHT="<playwright-core/index.mjs 绝对路径>" \
+PET_E2E_EDGE="<msedge.exe 绝对路径>" \
+PET_E2E_ARTIFACT_DIR="<截图输出目录>" \
+bun tests/e2e-page.test.mjs
 ```
 
 ## 卸载

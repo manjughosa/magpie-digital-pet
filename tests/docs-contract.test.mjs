@@ -56,10 +56,13 @@ test("README test section lists every module test plus selftest", () => {
     "pet-server-care.test.mjs",
     "page-contract.test.mjs",
     "docs-contract.test.mjs",
+    "e2e-page.test.mjs",
     "selftest.mjs",
   ]) {
     assert.ok(readme.includes(file), `README test list missing ${file}`);
   }
+  assert.ok(readme.includes("PET_E2E_PLAYWRIGHT"), "README must document the optional browser env");
+  assert.ok(readme.includes("PET_E2E_EDGE"), "README must document the optional browser executable env");
 });
 
 test("README keeps the original CLI command documentation", () => {
