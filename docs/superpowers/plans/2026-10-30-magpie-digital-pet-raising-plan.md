@@ -163,25 +163,25 @@ git commit -m "Add pet care action rules"
   - `evaluateDailyGoals({ careEventsToday, fedRequestsToday, expeditionClaimsToday }) -> DailyGoal[]`
   - `evaluateAchievements({ careEventCount, fragments, evolutionCount }) -> string[]`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 覆盖：已有进行中的探险时不能开始；精力低于 15 不能开始；未到 `endsAt` 不能领取；领取奖励按 `EXPEDITIONS` 精确发放；同一个 `random` 得到同一条见闻；每日目标阈值为 `2 次照顾、1 次探险、10 次自动进食`；成就 ID 为 `first-care`、`first-clean`、`first-expedition`、`care-10`、`fragments-100`、`first-evolution`。
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `bun tests/pet-progression-rules.test.mjs`  
 Expected: FAIL，导出不存在。
 
-- [ ] **Step 3: Implement progression rules**
+- [x] **Step 3: Implement progression rules**
 
 探险开始时消耗 10 精力并返回 `{ expeditionId, partnerId, kind, status: "running", startedAt, endsAt }`。结算返回 `{ fragments, bond, note }`，`note` 从 6 条固定中文见闻中用传入 `random` 选择；不修改数据库。
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `bun tests/pet-progression-rules.test.mjs`  
 Expected: PASS。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add lib/pet.care-rules.mjs tests/pet-progression-rules.test.mjs
