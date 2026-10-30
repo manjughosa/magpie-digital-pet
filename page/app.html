@@ -4,274 +4,138 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>宠物</title>
-<style>
-  :root {
-    --bg: Canvas; --fg: CanvasText; --muted: GrayText; --line: color-mix(in srgb, canvastext 14%, transparent);
-    --accent: #e8a33d; --ok: #15803d; --bar: color-mix(in srgb, canvastext 12%, transparent);
-    color-scheme: light dark;
-  }
-  html.theme-dark { color-scheme: dark; }
-  html.theme-light { color-scheme: light; }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0; padding: 18px 20px 40px;
-    font: 13px/1.6 var(--magpie-font, -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", system-ui, sans-serif);
-    background: var(--bg); color: var(--fg);
-  }
-  .muted { color: var(--muted); }
-  .small { font-size: 12px; }
-  h1 { font-size: 15px; margin: 0 0 2px; }
-  h2 { font-size: 13px; margin: 22px 0 8px; color: var(--muted); font-weight: 600; }
-
-  .card {
-    border: 1px solid var(--line); border-radius: 12px;
-    padding: 16px 18px; margin-top: 14px;
-  }
-  .pet-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
-  .pet-name { font-size: 19px; font-weight: 700; }
-  .pet-jp { color: var(--muted); font-size: 13px; }
-  .badge {
-    font-size: 11px; padding: 1px 8px; border-radius: 999px;
-    border: 1px solid var(--line); color: var(--muted);
-  }
-  .badge.warn { color: var(--accent); border-color: var(--accent); }
-
-  .bar-wrap { margin: 12px 0 4px; }
-  .bar {
-    height: 10px; border-radius: 999px; background: var(--bar); overflow: hidden;
-  }
-  .bar > i {
-    display: block; height: 100%; border-radius: 999px;
-    background: linear-gradient(90deg, #f0b95a, #e8a33d);
-    transition: width .4s ease;
-  }
-  .bar-note { display: flex; justify-content: space-between; margin-top: 5px; }
-
-  .stats { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
-  .stat {
-    flex: 1 1 120px; border: 1px solid var(--line); border-radius: 10px;
-    padding: 8px 12px;
-  }
-  .stat .k { font-size: 11px; color: var(--muted); }
-  .stat .v { font-size: 16px; font-weight: 650; font-variant-numeric: tabular-nums; }
-
-  .row-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
-  button {
-    font: inherit; padding: 5px 14px; border-radius: 8px; cursor: pointer;
-    border: 1px solid var(--line); background: var(--bg); color: var(--fg);
-  }
-  button:hover { border-color: var(--accent); }
-  button:disabled { opacity: .5; cursor: default; }
-  button.primary { border-color: var(--accent); color: var(--accent); }
-  #set-row { display: flex; gap: 8px; margin-top: 8px; }
-  #set-id {
-    font: inherit; width: 7em; padding: 5px 8px; border-radius: 8px;
-    border: 1px solid var(--line); background: var(--bg); color: var(--fg);
-  }
-  #say { margin-top: 10px; min-height: 1.5em; font-size: 12px; color: var(--muted); }
-  #say.ok { color: var(--ok); }
-
-  ul { list-style: none; margin: 0; padding: 0; }
-  li.ev {
-    display: flex; gap: 10px; align-items: baseline;
-    padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 12.5px;
-  }
-  li.ev:last-child { border-bottom: none; }
-  li.ev time { color: var(--muted); font-variant-numeric: tabular-nums; flex: none; }
-  li.ev .what { flex: 1; }
-  li.ev .tok { color: var(--muted); font-variant-numeric: tabular-nums; }
-  li.gen {
-    display: flex; gap: 10px; align-items: baseline; padding: 4px 0; font-size: 12.5px;
-  }
-  li.gen .g { color: var(--muted); flex: none; width: 3.5em; }
-  li.gen .r { color: var(--muted); font-size: 11px; margin-left: auto; }
-
-  .battle {
-    margin-top: 10px; padding: 8px 12px; border-radius: 10px;
-    border: 1px solid var(--accent); font-size: 12.5px;
-  }
-  a { color: var(--accent); text-decoration: none; }
-  .empty { color: var(--muted); padding: 10px 0; }
-</style>
+<link rel="stylesheet" href="app.css">
 </head>
 <body>
+<!-- 数据来自 /api/state，命令提交到 /api/command；动态文本一律用 textContent / DOM API 渲染，逻辑在 app.js，样式在 app.css。 -->
+<header class="topbar">
   <h1>宠物</h1>
-  <div class="muted small" id="sub">烧 token，养电子宠物</div>
+  <p class="muted small" id="sub">烧 token，养电子宠物</p>
+</header>
 
-  <div class="card" id="pet-card">
-    <div id="pet-body"><div class="empty">读取中…</div></div>
-  </div>
-
-  <div class="row-btns">
-    <button id="spawn" class="primary">孵新蛋</button>
-    <button id="freeze">冻结生长</button>
-    <button id="unfreeze">恢复生长</button>
-  </div>
-  <div id="set-row">
-    <input id="set-id" placeholder="4-001" spellcheck="false">
-    <button id="set">钉住此 ID</button>
-  </div>
-  <div id="say"></div>
-
-  <h2>喂食记录</h2>
-  <ul id="events"><li class="empty">读取中…</li></ul>
-
-  <h2>历代搭档</h2>
-  <ul id="gens"><li class="empty">读取中…</li></ul>
-
-  <div class="muted small" style="margin-top:26px">
-    数据库与 CLI 同源；页面每 5 秒刷新。<br>
-    原版引擎来自 @jcendal/opencode-digital-pet（Apache-2.0）。
-  </div>
-
-<script>
-const $ = (id) => document.getElementById(id);
-const fmt = (n) => {
-  n = Number(n) || 0;
-  if (n >= 1e9) return (n / 1e9).toFixed(2) + "B";
-  if (n >= 1e6) return (n / 1e6).toFixed(2) + "M";
-  if (n >= 1e3) return (n / 1e3).toFixed(1) + "K";
-  return String(n);
-};
-const timeOf = (iso) => {
-  const d = new Date(iso);
-  return Number.isFinite(d.getTime())
-    ? d.toLocaleString(undefined, { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })
-    : "";
-};
-
-// theme from the guide page's query string (magpie window follows the OS)
-try {
-  const q = new URLSearchParams(location.search);
-  const t = q.get("theme");
-  if (t === "dark") document.documentElement.classList.add("theme-dark");
-  if (t === "light") document.documentElement.classList.add("theme-light");
-} catch {}
-
-function say(msg, ok) {
-  const el = $("say");
-  el.textContent = msg || "";
-  el.className = ok ? "ok" : "";
-}
-
-function renderPet(s) {
-  const body = $("pet-body");
-  if (!s.ok) {
-    body.innerHTML = `<div class="empty">读不到数据库：${s.error || "?"}</div>`;
-    return;
-  }
-  $("sub").textContent = `已喂 ${s.fedRequests} 个请求 · ${fmt(s.fedTokens)} tokens${s.fedCost > 0 ? ` · $${s.fedCost.toFixed(2)}` : ""}`;
-  if (!s.partner) {
-    body.innerHTML = `<div class="empty">还没有搭档 —— 点下面的「孵新蛋」。</div>`;
-    return;
-  }
-  const p = s.partner;
-  const pin = s.pinned ? `<span class="badge warn">已钉住 · 不生长</span>` : "";
-  const frozen = s.frozen ? `<span class="badge warn">冻结中 · 不生长</span>` : "";
-  const battle = p.battle
-    ? `<div class="battle">⚔️ 进化对决待战：对手 <b>${p.battle.nameEn}</b>（用 CLI 迎战）</div>`
-    : "";
-  body.innerHTML = `
-    <div class="pet-head">
-      <span class="pet-name">${p.node.nameEn}</span>
-      <span class="pet-jp">${p.node.nameJp}</span>
-      <span class="badge">gen ${p.generation} · ${p.stageName}</span>
-      ${pin}${frozen}
+<main>
+  <section class="habitat" id="habitat" aria-label="宠物栖息地">
+    <div class="sky">
+      <canvas id="pet-canvas" width="288" height="176" role="img" aria-label="宠物像素形象"></canvas>
     </div>
-    ${p.node.url ? `<div class="small" style="margin-top:4px"><a href="${p.node.url}" target="_blank" rel="noreferrer">图鉴 ↗</a></div>` : ""}
-    <div class="bar-wrap">
-      <div class="bar"><i style="width:${Math.max(1.5, p.pct).toFixed(1)}%"></i></div>
-      <div class="bar-note small">
-        <span>${fmt(p.gauge)} / ${fmt(p.threshold)} tokens</span>
-        <span class="muted">${p.pct.toFixed(2)}%</span>
+    <div class="habitat-info">
+      <div class="pet-head">
+        <span class="pet-name" id="pet-name">…</span>
+        <span class="pet-jp" id="pet-jp"></span>
+        <span class="badge" id="pet-stage-badge"></span>
+        <span class="badge warn" id="pet-pin-badge" hidden>已钉住 · 不生长</span>
+        <span class="badge warn" id="pet-frozen-badge" hidden>冻结中 · 不生长</span>
       </div>
+      <p class="status-line" id="status-line">读取中…</p>
+      <div class="evo">
+        <div class="bar evo-bar"><i id="evo-fill"></i></div>
+        <div class="bar-note small">
+          <span id="evo-text"></span>
+          <span class="muted" id="evo-pct"></span>
+        </div>
+      </div>
+      <div class="battle" id="battle" hidden>进化对决待战：对手 <b id="battle-foe"></b>（用 CLI 迎战）</div>
     </div>
-    ${battle}
-    <div class="stats">
-      <div class="stat"><div class="k">训练师累计</div><div class="v">${fmt(s.trainerTokens)}</div></div>
-      <div class="stat"><div class="k">已喂请求</div><div class="v">${s.fedRequests}</div></div>
-      <div class="stat"><div class="k">喂食 token</div><div class="v">${fmt(s.fedTokens)}</div></div>
-    </div>`;
-}
+  </section>
 
-function renderLists(s) {
-  const ev = $("events");
-  if (!s.ok || !s.events || !s.events.length) {
-    ev.innerHTML = `<li class="empty">还没有记录。</li>`;
-  } else {
-    ev.innerHTML = "";
-    for (const e of s.events) {
-      const li = document.createElement("li");
-      li.className = "ev";
-      const what =
-        e.kind === "spawned" ? `孵出 ${e.node.nameEn}` :
-        e.kind === "usage_applied" ? `${e.node.nameEn} 进食` :
-        e.kind;
-      const tok = e.tokenDelta != null ? `+${fmt(e.tokenDelta)}` : "";
-      li.innerHTML = `<time>${timeOf(e.createdAt)}</time><span class="what">${what}</span><span class="tok">${tok}</span>`;
-      ev.append(li);
-    }
-  }
-  const gens = $("gens");
-  if (!s.ok || !s.partners || !s.partners.length) {
-    gens.innerHTML = `<li class="empty">还没有搭档。</li>`;
-  } else {
-    gens.innerHTML = "";
-    for (const g of s.partners.slice().reverse()) {
-      const li = document.createElement("li");
-      li.className = "gen";
-      li.innerHTML = `<span class="g">gen ${g.generation}</span><span>${g.node.nameEn}${g.retired ? "" : " · 现役"}</span><span class="r">${timeOf(g.createdAt)}</span>`;
-      gens.append(li);
-    }
-  }
-}
+  <section id="care-bars" aria-label="状态">
+    <h2>状态</h2>
+    <div class="care-row" data-stat="satiety">
+      <span class="care-label">饱食</span>
+      <div class="bar"><i class="bar-fill"></i></div>
+      <span class="care-val">–</span>
+    </div>
+    <div class="care-row" data-stat="mood">
+      <span class="care-label">心情</span>
+      <div class="bar"><i class="bar-fill"></i></div>
+      <span class="care-val">–</span>
+    </div>
+    <div class="care-row" data-stat="energy">
+      <span class="care-label">精力</span>
+      <div class="bar"><i class="bar-fill"></i></div>
+      <span class="care-val">–</span>
+    </div>
+    <div class="care-row" data-stat="hygiene">
+      <span class="care-label">清洁</span>
+      <div class="bar"><i class="bar-fill"></i></div>
+      <span class="care-val">–</span>
+    </div>
+    <div class="care-row" data-stat="bond">
+      <span class="care-label">亲密</span>
+      <div class="bar"><i class="bar-fill"></i></div>
+      <span class="care-val">–</span>
+    </div>
+  </section>
 
-function paint(s) { renderPet(s); renderLists(s); }
+  <section id="actions" aria-label="日常照顾">
+    <h2>日常照顾</h2>
+    <div class="btn-grid">
+      <button type="button" data-command="pet-feed-snack" data-cooldown="snack">喂食点心</button>
+      <button type="button" data-command="pet-play" data-cooldown="play">玩耍</button>
+      <button type="button" data-command="pet-clean" data-cooldown="clean">清洁</button>
+      <button type="button" data-command="pet-rest" data-cooldown="rest">休息</button>
+      <button type="button" data-command="pet-pet-egg" data-cooldown="petEgg" id="btn-pet-egg">摸蛋</button>
+    </div>
+    <p class="small muted hint" id="actions-hint"></p>
+  </section>
 
-async function load() {
-  try {
-    const r = await fetch("/api/state", { cache: "no-store" });
-    paint(await r.json());
-  } catch (e) {
-    say("刷新失败：" + (e?.message ?? e));
-  }
-}
+  <section id="expedition" aria-label="探险">
+    <h2>探险</h2>
+    <p class="small" id="expedition-status">还没有进行中的探险。</p>
+    <div class="btn-row">
+      <button type="button" data-command="pet-expedition-start" data-args="patrol">短巡逻 · 5 分钟</button>
+      <button type="button" data-command="pet-expedition-start" data-args="field">数据原野 · 15 分钟</button>
+      <button type="button" data-command="pet-expedition-start" data-args="night">深夜远征 · 30 分钟</button>
+      <button type="button" data-command="pet-expedition-claim" class="primary" id="btn-claim" hidden>领取探险奖励</button>
+    </div>
+  </section>
 
-async function command(name, args) {
-  const btns = [...document.querySelectorAll("button")];
-  btns.forEach((b) => (b.disabled = true));
-  try {
-    const r = await fetch("/api/command", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ name, args }),
-    });
-    const j = await r.json();
-    if (!r.ok) {
-      say(j?.error || `HTTP ${r.status}`);
-      return;
-    }
-    const toast = (j.toasts || []).map((t) => [t.title, t.message].filter(Boolean).join(" — ")).filter(Boolean).join("；");
-    say(toast || j.text || "完成", true);
-    if (j.state) paint(j.state);
-  } catch (e) {
-    say("命令失败：" + (e?.message ?? e));
-  } finally {
-    btns.forEach((b) => (b.disabled = false));
-  }
-}
+  <section id="daily-goals" aria-label="每日目标">
+    <h2>每日目标</h2>
+    <ul class="goal-list" id="daily-list"></ul>
+  </section>
 
-$("spawn").onclick = () => command("digital-pet-spawn");
-$("freeze").onclick = () => command("digital-pet-freeze");
-$("unfreeze").onclick = () => command("digital-pet-unfreeze");
-$("set").onclick = () => {
-  const id = $("set-id").value.trim();
-  if (!/^[0-9]-[0-9]{1,3}$/.test(id)) { say("ID 形如 4-001"); return; }
-  command("digital-pet-set", id);
-};
+  <section id="collection" aria-label="收藏与装饰">
+    <h2>收藏与装饰</h2>
+    <p class="small">数据碎片：<b id="fragments">0</b> · <span class="muted" id="achievements"></span></p>
+    <div class="btn-row">
+      <button type="button" data-command="pet-decoration-equip" data-args="meadow">草原背景 · 10 碎片</button>
+      <button type="button" data-command="pet-decoration-equip" data-args="night">夜空背景 · 25 碎片</button>
+      <button type="button" data-command="pet-decoration-equip" data-args="terminal">终端背景 · 40 碎片</button>
+    </div>
+  </section>
 
-load();
-setInterval(load, 5000);
-</script>
+  <section aria-label="喂食记录">
+    <h2>喂食记录</h2>
+    <ul id="events"><li class="empty">读取中…</li></ul>
+  </section>
+
+  <section aria-label="历代搭档">
+    <h2>历代搭档</h2>
+    <ul id="gens"><li class="empty">读取中…</li></ul>
+  </section>
+
+  <section id="manage" aria-label="管理">
+    <h2>管理</h2>
+    <div class="btn-row">
+      <button type="button" data-command="digital-pet-spawn">孵新蛋</button>
+      <button type="button" data-command="digital-pet-freeze">冻结生长</button>
+      <button type="button" data-command="digital-pet-unfreeze">恢复生长</button>
+    </div>
+    <div id="set-row">
+      <input id="set-id" placeholder="4-001" spellcheck="false" aria-label="要钉住的图鉴 ID">
+      <button type="button" data-command="digital-pet-set">钉住此 ID</button>
+      <a id="dex-link" href="#" target="_blank" rel="noreferrer" hidden>图鉴 ↗</a>
+    </div>
+  </section>
+
+  <div id="say" role="status" aria-live="polite"></div>
+</main>
+
+<footer class="muted small">
+  数据库与 CLI 同源；页面每 5 秒刷新。<br>
+  原版引擎来自 @jcendal/opencode-digital-pet（Apache-2.0）。
+</footer>
+<script src="app.js" defer></script>
 </body>
 </html>
