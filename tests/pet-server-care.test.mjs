@@ -279,6 +279,30 @@ await test("decoration equip validates the id and the fragment balance", async (
   assert.ok(equip.json.state.collection.unlocked.includes("meadow"));
 });
 
+await test("unknown pet-expedition-* commands are rejected as unknown-command without side effects", async () => {
+  // regression: the care whitelist used startsWith("pet-expedition-"), so any
+  // pet-expedition-* name fell through to the decoration-equip branch and
+  // spent fragments. Unknown names must be rejected before any mutation.
+  const before = await httpJson(3641, "/api/state");
+  assert.equal(before.status, 200);
+  const fragmentsBefore = before.json.collection.fragments;
+  const themeBefore = before.json.collection.equippedTheme;
+
+  for (const name of ["pet-expedition-nonsense", "pet-expedition-claimm"]) {
+    const res = await httpJson(3641, "/api/command", {
+      method: "POST",
+      body: { name, args: "meadow" },
+    });
+    assert.equal(res.status, 400, `${name} must be rejected`);
+    assert.equal(res.json.reason, "unknown-command", `${name} reason`);
+  }
+
+  const after = await httpJson(3641, "/api/state");
+  assert.equal(after.status, 200);
+  assert.equal(after.json.collection.fragments, fragmentsBefore);
+  assert.equal(after.json.collection.equippedTheme, themeBefore);
+});
+
 await test("original engine commands stay compatible and a re-spawn shows the new partner's default care", async () => {
   const set = await httpJson(3641, "/api/command", {
     method: "POST",
