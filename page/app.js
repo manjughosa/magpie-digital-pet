@@ -6,9 +6,8 @@ const $ = (id) => document.getElementById(id);
 
 const fmt = (n) => {
   n = Number(n) || 0;
-  if (n >= 1e9) return (n / 1e9).toFixed(2) + "B";
-  if (n >= 1e6) return (n / 1e6).toFixed(2) + "M";
-  if (n >= 1e3) return (n / 1e3).toFixed(1) + "K";
+  if (n >= 1e8) return `${(n / 1e8).toFixed(2)}亿`;
+  if (n >= 1e4) return `${(n / 1e4).toFixed(1)}万`;
   return String(n);
 };
 
