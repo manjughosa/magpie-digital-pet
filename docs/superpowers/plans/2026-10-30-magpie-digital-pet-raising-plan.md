@@ -293,25 +293,25 @@ git commit -m "Expose care gameplay through local page API"
 - Consumes: Task 5 的 `/api/state` 与 `/api/command`。
 - Produces DOM 区域：`#habitat`、`#pet-canvas`、`#care-bars`、`#actions`、`#daily-goals`、`#collection`、`#events`、`#gens`。
 
-- [ ] **Step 1: Write the failing page contract test**
+- [x] **Step 1: Write the failing page contract test**
 
 测试读取三个页面文件，断言：`app.html` 不再包含内联 `<script>` 逻辑；动态文本经 `textContent` 渲染；存在 `pet-canvas`、`care-bars`、`actions`、`daily-goals`、`collection`；CSS 同时包含 `.theme-light` 和 `.theme-dark` 选择器；所有新增命令按钮有 `data-command`。
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `bun tests/page-contract.test.mjs`  
 Expected: FAIL，文件/结构不存在。
 
-- [ ] **Step 3: Implement the page**
+- [x] **Step 3: Implement the page**
 
 首屏按设计稿第 8.1 节布局。Canvas 把 `frame.content` 中的非空字符画成像素；`█/▀/▄` 使用不同亮度，缺帧时按 `node.id + stage` 生成稳定的对称像素兜底。宠物按状态选择帧：饱食低用 `angry/refuse`，精力低用 `sleep_1/sleep_2`，操作后短暂播放对应帧。主题继续读取 query 参数，同时加 `prefers-color-scheme` 兜底。
 
-- [ ] **Step 4: Run contract test to verify it passes**
+- [x] **Step 4: Run contract test to verify it passes**
 
 Run: `bun tests/page-contract.test.mjs`  
 Expected: PASS。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add page/app.html page/app.css page/app.js tests/page-contract.test.mjs
