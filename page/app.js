@@ -227,15 +227,23 @@ function drawFallback(key, hue, bob) {
   drawContent(grid.join("\n"), hue, bob);
 }
 
-function pickFrameNames(state) {
-  if (override && Date.now() < override.until) return override.names;
-  const care = state?.care?.state;
-  if (!care) return ["walk_1", "walk_2"];
-  if (care.energy < 25) return ["sleep_1", "sleep_2", "walk_1", "walk_2"];
-  if (care.hygiene < 25) return ["injured_1", "injured_2", "walk_1", "walk_2"];
-  if (care.satiety < 25) return ["angry", "refuse", "walk_1", "walk_2"];
-  if (care.mood >= 75) return ["happy", "walk_1", "walk_2"];
-  return ["walk_1", "walk_2"];
+function pickFrameNames(state, frames) {
+  const ok = (n) => typeof frames?.[n] === "string" && frames[n].length > 0;
+  const regular = () => {
+    const care = state?.care?.state;
+    if (!care) return ["walk_1", "walk_2"];
+    if (care.energy < 25) return ["sleep_1", "sleep_2", "walk_1", "walk_2"];
+    if (care.hygiene < 25) return ["injured_1", "injured_2", "walk_1", "walk_2"];
+    if (care.satiety < 25) return ["angry", "refuse", "walk_1", "walk_2"];
+    if (care.mood >= 75) return ["happy", "walk_1", "walk_2"];
+    return ["walk_1", "walk_2"];
+  };
+  if (override && Date.now() < override.until) {
+    // 缺失姿态时回退到行走/待机常规帧，而不是直接走像素兜底
+    const names = override.names.filter(ok);
+    return names.length > 0 ? names : regular().filter(ok);
+  }
+  return regular().filter(ok);
 }
 
 function renderScene() {
@@ -249,8 +257,7 @@ function renderScene() {
   const isEgg = stage === 0 || sprite === "egg";
   if (isEgg) drawGlow(hue);
   const bob = motionOK() && isEgg ? Math.round(Math.sin(tick * 0.9) * 2) : 0;
-  const frames = s?.frames || {};
-  const available = pickFrameNames(s).filter((n) => typeof frames[n] === "string" && frames[n].length > 0);
+  const available = pickFrameNames(s, s?.frames || {});
   if (available.length > 0) {
     drawContent(frames[available[tick % available.length]], hue, bob);
   } else if (s?.partner) {
@@ -618,6 +625,8 @@ async function command(name, args) {
     say(`命令失败：${e?.message ?? e}`);
   } finally {
     busy = false;
+    // 先恢复所有按钮（含 #manage 管理区），再让 updateButtons 按状态重新禁用
+    document.querySelectorAll("button").forEach((b) => (b.disabled = false));
     updateButtons();
   }
 }

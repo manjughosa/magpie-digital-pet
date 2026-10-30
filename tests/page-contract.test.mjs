@@ -101,6 +101,33 @@ test("expedition and decoration buttons carry static data-args", () => {
   }
 });
 
+test("command() finally re-enables every button before updateButtons()", () => {
+  const start = js.indexOf("async function command(");
+  assert.ok(start !== -1, "command() must exist");
+  const finallyIdx = js.indexOf("finally", start);
+  assert.ok(finallyIdx !== -1, "command() must have a finally block");
+  const body = js.slice(finallyIdx, finallyIdx + 400);
+  const enableIdx = body.search(/querySelectorAll\("button"\)[\s\S]{0,100}?disabled\s*=\s*false/);
+  const updateIdx = body.indexOf("updateButtons()");
+  assert.ok(/busy\s*=\s*false/.test(body), "finally must keep clearing the busy re-entry guard");
+  assert.ok(enableIdx !== -1, "finally must first re-enable all buttons (incl. #manage) before state-based disabling");
+  assert.ok(updateIdx !== -1, "finally must call updateButtons()");
+  assert.ok(enableIdx < updateIdx, "re-enable must run before updateButtons() so it can re-disable per state");
+});
+
+test("override action frames fall back to regular state frames when unavailable", () => {
+  const start = js.indexOf("function pickFrameNames");
+  const end = js.indexOf("function restartAnimation");
+  assert.ok(start !== -1 && end > start, "expected pickFrameNames/renderScene region");
+  const scene = js.slice(start, end);
+  assert.ok(!/return override\.names\s*;/.test(scene),
+    "override names must be filtered against available frames, not returned raw");
+  assert.ok(/override[\s\S]{0,160}?\.filter\(/.test(scene),
+    "override names must be filtered by frame availability");
+  assert.ok(/\.length\s*>\s*0\s*\?/.test(scene) || /\.length\s*===?\s*0/.test(scene),
+    "empty filtered override must fall back to walk/care frames before drawFallback");
+});
+
 if (failures > 0) {
   console.error(`\n${failures} test(s) failed`);
   process.exit(1);
