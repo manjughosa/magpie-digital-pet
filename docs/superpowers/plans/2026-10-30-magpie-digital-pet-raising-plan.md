@@ -254,27 +254,27 @@ git commit -m "Persist pet care progression"
 
 新增命令白名单精确为：`pet-feed-snack`、`pet-play`、`pet-clean`、`pet-rest`、`pet-pet-egg`、`pet-expedition-start`、`pet-expedition-claim`、`pet-decoration-equip`。
 
-- [ ] **Step 1: Write the failing server tests**
+- [x] **Step 1: Write the failing server tests**
 
 `tests/pet-server-care.test.mjs` 用临时库启动服务，断言：state 包含默认 care；每个新命令成功改变对应状态；非法探险类型、非法装饰 ID、重复 claim 返回 HTTP 400；静态路径 `/%2e%2e/package.json` 不返回文件；响应中的动态字段经 JSON 输出而不是拼 HTML。
 
 修改 `tests/selftest.mjs` 的关闭断言：使用 Node `node:http` 请求 127.0.0.1，关闭后必须连接失败；不要把代理 HTTP 502 当作服务在线。
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `bun tests/pet-server-care.test.mjs && bun tests/selftest.mjs`  
 Expected: 新测试因 API 不存在而失败。
 
-- [ ] **Step 3: Implement server integration**
+- [x] **Step 3: Implement server integration**
 
 在 `createPetServer` 内持有一个 `CareStore` 和帧目录；`readState` 合并上游快照与养成快照。所有新命令先校验参数，再调用 store，并把 `state: readState(...)` 返回。静态文件用 `resolve` 后判断 `relative(UI_ROOT, file)` 不以 `..` 开头。`close()` 跟踪并销毁活动 socket，确保重复 close 幂等。
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `bun tests/pet-server-care.test.mjs && bun tests/selftest.mjs`  
 Expected: 新测试 PASS，自检 26/26 PASS。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add lib/pet.server.mjs tests/pet-server-care.test.mjs tests/selftest.mjs
