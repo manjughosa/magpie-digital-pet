@@ -831,6 +831,21 @@ $("dex-filter")?.addEventListener("change", () => {
   if (lastState) paintDex(lastState);
 });
 
+// 外链图鉴在沙盒页里可能被浏览器拦截；点击后至少给出明确反馈和可复制地址。
+$("dex-link")?.addEventListener("click", (event) => {
+  const url = event.currentTarget.href;
+  if (!url || url === "#") {
+    event.preventDefault();
+    say("当前宠物没有外部图鉴链接。");
+    return;
+  }
+  event.preventDefault();
+  try {
+    window.open(url, "_blank", "noopener");
+  } catch {}
+  say(`已尝试打开图鉴；如果被浏览器拦截，请复制：${url}`, true);
+});
+
 // ---------- archive tabs ----------
 
 document.querySelectorAll(".tab-btn").forEach((btn) => {
