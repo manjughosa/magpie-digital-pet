@@ -376,16 +376,19 @@ await test("original engine commands stay compatible; set displays the pinned no
   assert.equal(unpin.json.state.partner.node.id, "0-001");
 });
 
-await test("spawn is rate limited, then allowed after the active egg is old enough", async () => {
-  const tooSoon = await httpJson(3641, "/api/command", {
+await test("spawn requires baby II and is rate limited, then uses the non-repeating starter pool", async () => {
+  const tooEarly = await httpJson(3641, "/api/command", {
     method: "POST",
     body: { name: "digital-pet-spawn" },
   });
-  assert.equal(tooSoon.status, 400);
-  assert.equal(tooSoon.json.reason, "spawn-cooldown");
+  assert.equal(tooEarly.status, 400);
+  assert.equal(tooEarly.json.reason, "stage-required");
 
   withRawDb(dbA, (db) => {
-    db.run("UPDATE partners SET created_at = ? WHERE retired_at IS NULL", new Date(Date.now() - 120_000).toISOString());
+    db.run(
+      "UPDATE partners SET current_node_id = '2-001', created_at = ? WHERE retired_at IS NULL",
+      new Date(Date.now() - 120_000).toISOString(),
+    );
   });
   const spawn = await httpJson(3641, "/api/command", {
     method: "POST",
@@ -394,6 +397,7 @@ await test("spawn is rate limited, then allowed after the active egg is old enou
   assert.equal(spawn.status, 200);
   const state = spawn.json.state;
   assert.equal(state.partner.generation, 2);
+  assert.equal(state.partner.node.id, "1-001");
   assert.equal(state.care.state.partnerId, state.partner.id);
   assert.ok(Math.abs(state.care.state.satiety - 72) < 0.1);
   assert.ok(Math.abs(state.care.state.bond - 0) < 0.1);

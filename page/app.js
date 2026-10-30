@@ -715,6 +715,23 @@ function updateButtons() {
     btn.title = btn.disabled && s?.ok ? "碎片不够，去探险赚一点吧" : "";
   });
 
+  const spawnBtn = document.querySelector('[data-command="digital-pet-spawn"]');
+  if (spawnBtn) {
+    if (!s || !s.ok) {
+      spawnBtn.disabled = true;
+      spawnBtn.title = "";
+    } else if (!partner) {
+      spawnBtn.disabled = false;
+      spawnBtn.title = "孵出第一颗蛋";
+    } else {
+      const stage = partner.engineNode?.stage ?? partner.node?.stage ?? 0;
+      spawnBtn.disabled = stage < 2;
+      spawnBtn.title = stage < 2
+        ? "当前伙伴达到 baby II 后才能孵下一颗蛋"
+        : "当前伙伴会退役，需要二次确认";
+    }
+  }
+
   // 状态文案里的探险倒计时也随秒针刷新
   if (s?.ok) $("status-line").textContent = statusText(s);
   if (s?.ok) paintExpedition(s);
