@@ -111,7 +111,7 @@ git commit -m "Add reusable monster frame catalog"
 }
 ```
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 覆盖：
 
@@ -127,21 +127,21 @@ assert.deepEqual(pick(createDefaultCareState("p1", 1000), ["satiety","mood","ene
 
 动作数值固定为设计稿：snack `+10 satiety/+2 mood`、play `+12 mood/+2 bond/-10 energy`、clean `hygiene=100`、rest `+25 energy/-2 satiety`、petEgg `+2 bond`；冷却分别为 10、8、10、15、5 分钟。
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `bun tests/pet-care-rules.test.mjs`  
 Expected: FAIL，模块不存在。
 
-- [ ] **Step 3: Implement pure rules**
+- [x] **Step 3: Implement pure rules**
 
 所有函数保持纯计算：不读写数据库、不直接调用 `Date.now()`；返回新对象。衰减率固定为每小时：satiety `-2`、mood `-1.5`、energy `+3`、hygiene `-1`；所有值夹到 0–100，时间最多取 24 小时。
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `bun tests/pet-care-rules.test.mjs`  
 Expected: PASS。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add lib/pet.care-rules.mjs tests/pet-care-rules.test.mjs
