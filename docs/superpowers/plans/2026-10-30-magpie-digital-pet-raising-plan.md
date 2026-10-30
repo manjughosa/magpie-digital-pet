@@ -206,25 +206,25 @@ git commit -m "Add expedition and collection rules"
   - `CareStore.getCollection() -> { fragments, unlocked, equippedTheme, achievements }`
   - `CareStore.close() -> void`
 
-- [ ] **Step 1: Write the failing store tests**
+- [x] **Step 1: Write the failing store tests**
 
 测试使用临时数据库，覆盖：重复打开只迁移一次；`getCareSnapshot("p1")` 自动创建默认状态；连续 snack 第二次被冷却拒绝；切换 `p1/p2` 后各自状态保留；`claimExpedition` 对同一 ID 第二次返回 `already-claimed` 且碎片不翻倍；`care-10` 成就只解锁一次；关闭后不允许继续写。
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `bun tests/pet-care-store.test.mjs`  
 Expected: FAIL，模块不存在。
 
-- [ ] **Step 3: Implement migrations and transactional writes**
+- [x] **Step 3: Implement migrations and transactional writes**
 
 创建设计稿第 9.2 节的 6 张 `magpie_pet_` 表。每个写命令在 Bun SQLite transaction 内完成：读取、规则计算、写状态、写事件、写奖励/成就。事件 ID 用 `randomUUID()`，时间参数由调用方传入。
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `bun tests/pet-care-store.test.mjs`  
 Expected: PASS。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add lib/pet.care-store.mjs tests/pet-care-store.test.mjs
