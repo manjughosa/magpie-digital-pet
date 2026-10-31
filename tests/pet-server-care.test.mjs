@@ -532,7 +532,7 @@ await test("original engine commands stay compatible; set displays the pinned no
   assert.equal(unpin.json.state.partner.node.id, "0-001");
 });
 
-await test("spawn requires baby II and is rate limited, then uses the non-repeating starter pool", async () => {
+await test("spawn unlocks from baby II upward, is rate limited, then uses the non-repeating starter pool", async () => {
   const tooEarly = await httpJson(serverA.port, "/api/command", {
     method: "POST",
     body: { name: "digital-pet-spawn" },
@@ -540,9 +540,21 @@ await test("spawn requires baby II and is rate limited, then uses the non-repeat
   assert.equal(tooEarly.status, 400);
   assert.equal(tooEarly.json.reason, "stage-required");
 
+  // baby I is still below the gate
+  withRawDb(dbA, (db) => {
+    db.run("UPDATE partners SET current_node_id = '1-001' WHERE retired_at IS NULL");
+  });
+  const stillEarly = await httpJson(serverA.port, "/api/command", {
+    method: "POST",
+    body: { name: "digital-pet-spawn" },
+  });
+  assert.equal(stillEarly.status, 400);
+  assert.equal(stillEarly.json.reason, "stage-required");
+
+  // child (stage 3) is above baby II and must stay unlocked
   withRawDb(dbA, (db) => {
     db.run(
-      "UPDATE partners SET current_node_id = '2-001', created_at = ? WHERE retired_at IS NULL",
+      "UPDATE partners SET current_node_id = '3-001', created_at = ? WHERE retired_at IS NULL",
       new Date(Date.now() - 120_000).toISOString(),
     );
   });

@@ -1029,9 +1029,10 @@ function updateButtons() {
       spawnBtn.title = "孵出第一颗蛋";
     } else {
       const stage = partner.engineNode?.stage ?? partner.node?.stage ?? 0;
+      // baby II 及以上（stage 2+）解锁孵蛋；进化到更高阶段不会重新锁上
       spawnBtn.disabled = stage < 2;
       spawnBtn.title = stage < 2
-        ? "当前伙伴达到 baby II 后才能孵下一颗蛋"
+        ? "当前伙伴达到 baby II（含以上阶段）后才能孵下一颗蛋"
         : "当前伙伴会退役，需要二次确认";
     }
   }
