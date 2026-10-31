@@ -393,7 +393,28 @@ function renderScene() {
     if (squash > 0.05) ctx.scale(1 + squash * 0.12, 1 - squash * 0.18);
     ctx.translate(-cx, -cy);
   }
-  if (available.length > 0) {
+  if (s?.pngFrames?.length > 0) {
+    // PNG 精灵（omnipet）：选帧映射到 0-14，frame 15 是卡片不用
+    const usable = s.pngFrames.filter((u) => !u.endsWith("/15.png"));
+    if (usable.length > 0) {
+      const idx = pickPngFrame(s, tick, usable.length);
+      const img = pngImage(usable[idx]);
+      if (img) {
+        const scale = 5;
+        const w = img.naturalWidth * scale;
+        const h = img.naturalHeight * scale;
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(img, CW / 2 - w / 2, GROUND_Y - h + bob, w, h);
+      } else {
+        // 图片还在加载，画个占位轮廓
+        drawFallback(`${s.partner.node.id}:${stage}`, hue, bob);
+      }
+    } else if (available.length > 0) {
+      drawContent(frameSet[available[tick % available.length]], hue, bob);
+    } else if (s?.partner) {
+      drawFallback(`${s.partner.node.id}:${stage}`, hue, bob);
+    }
+  } else if (available.length > 0) {
     drawContent(frameSet[available[tick % available.length]], hue, bob);
   } else if (s?.partner) {
     drawFallback(`${s.partner.node.id}:${stage}`, hue, bob);
@@ -425,6 +446,36 @@ function restartAnimation() {
   }
 }
 restartAnimation();
+
+// ---------- PNG sprite rendering (omnipet CC BY-NC) ----------
+// 帧缓存：URL → HTMLImageElement | null(加载中) | false(失败)
+const pngCache = new Map();
+
+function pngImage(url) {
+  if (pngCache.has(url)) return pngCache.get(url);
+  const img = new Image();
+  img.onload = () => pngCache.set(url, img);
+  img.onerror = () => pngCache.set(url, false);
+  pngCache.set(url, null); // loading
+  img.src = url;
+  return null;
+}
+
+// 把文本帧语义映射到 omnipet 帧编号：0=站姿 1=走路 2=攻击 3=开心 4=愤怒
+// 5-6=受伤 7-8=睡眠 9=进食1 10=进食2 11=走路2 12=开心2 13=愤怒2 14=攻击2
+function pickPngFrame(state, tick, count) {
+  if (override && Date.now() < override.until) {
+    const actionMap = {
+      "pet-feed-snack": [9, 10], "pet-play": [3, 12], "pet-clean": [0, 1],
+      "pet-rest": [7, 8], "pet-pet-egg": [3, 0], "pet-pet": [3, 0],
+      "pet-battle": [2, 14], "digital-pet-spawn": [3, 12],
+    };
+    const frames = actionMap[override.name] ?? [0, 1];
+    return frames[tick % frames.length] % count;
+  }
+  // 常态呼吸：站姿和走路交替
+  return [0, 1][tick % 2] % count;
+}
 
 // ---------- canvas pointer interactions ----------
 // 六种画布交互：抚摸（按住来回划）、点击（跳一下）、悬停（注视微光）、
