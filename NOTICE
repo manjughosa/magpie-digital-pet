@@ -17,8 +17,11 @@ The sidebar page additionally renders hi-def PNG sprite frames for 474 species
 (sprites/ directory, local-only, not distributed with this repository) sourced
 from sundeth/omnipet (https://github.com/sundeth/omnipet), licensed under
 Creative Commons Attribution-NonCommercial 4.0 International (CC BY-NC 4.0),
-© Anderson Porto 2025. Frame semantics (idle/walk/attack/happy/eat/sleep/injured)
-are decoded from the omnipet sprite atlas convention. Species without a PNG
-mapping continue to use the Apache-2.0 text frames or the procedural fallback.
+© Anderson Porto 2025. The omnipet sprites are in turn derived from
+Tortoiseshel's Full Color Digimon Dot Sprites
+(https://withthewill.net/threads/22970-Full-Color-Digimon-Dot-Sprites).
+Frame semantics (idle/walk/attack/happy/eat/sleep/injured) are decoded from
+the omnipet sprite atlas convention. Species without a PNG mapping continue
+to use the Apache-2.0 text frames or the procedural fallback.
 
 Licensed under the Apache License, Version 2.0 (see LICENSE).
