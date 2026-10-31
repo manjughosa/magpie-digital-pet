@@ -363,6 +363,36 @@ await test("pet-display only changes display, never pins; unpin clears both", as
   }
 });
 
+await test("dev unlock_all flag unlocks the whole dex and the display switch", async () => {
+  const before = await httpJson(serverA.port, "/api/state");
+  const lockedBefore = before.json.dex.filter((d) => !d.unlocked).length;
+  assert.ok(lockedBefore > 600, "fixture should start nearly all locked");
+
+  withRawDb(dbA, (db) => {
+    db.run("CREATE TABLE IF NOT EXISTS magpie_pet_dev_mode (control_id INTEGER PRIMARY KEY CHECK (control_id = 1), unlock_all INTEGER NOT NULL DEFAULT 0)");
+    db.run("INSERT INTO magpie_pet_dev_mode (control_id, unlock_all) VALUES (1, 1)");
+  });
+  try {
+    const unlocked = await httpJson(serverA.port, "/api/state");
+    assert.equal(unlocked.json.unlockAll, true);
+    assert.equal(unlocked.json.dex.filter((d) => !d.unlocked).length, 0, "every dex entry must be unlocked");
+
+    const show = await httpJson(serverA.port, "/api/command", {
+      method: "POST",
+      body: { name: "pet-display", args: "7-001" },
+    });
+    assert.equal(show.status, 200, "dev mode must allow displaying any species");
+    assert.equal(show.json.state.displaying, "7-001");
+    await httpJson(serverA.port, "/api/command", { method: "POST", body: { name: "pet-display", args: "7-001" } });
+  } finally {
+    withRawDb(dbA, (db) => {
+      db.run("DELETE FROM magpie_pet_dev_mode");
+      db.run("CREATE TABLE IF NOT EXISTS magpie_pet_display_state (control_id INTEGER PRIMARY KEY CHECK (control_id = 1), node_id TEXT)");
+      db.run("DELETE FROM magpie_pet_display_state");
+    });
+  }
+});
+
 await test("expedition commands validate kind, single active expedition and double claims", async () => {
   const badKind = await httpJson(serverA.port, "/api/command", {
     method: "POST",
