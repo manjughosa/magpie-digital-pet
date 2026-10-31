@@ -87,6 +87,7 @@ test("all pet-* and digital-pet-* commands have buttons", () => {
     "digital-pet-unfreeze",
     "digital-pet-set",
     "pet-unpin",
+    "pet-battle",
   ]) {
     assert.ok(commands.has(name), `missing button for ${name}`);
   }

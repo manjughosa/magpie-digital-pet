@@ -266,7 +266,24 @@ html.theme-dark .habitat--sakura .sky {
   border: 1px solid var(--accent);
   color: var(--accent-fg, var(--accent));
   font-size: 12.5px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
+.battle b { flex: 0 0 auto; }
+.battle-fight {
+  margin-left: auto;
+  padding: 4px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--accent-fg, Canvas);
+  font-weight: 650;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.battle-fight:hover { filter: brightness(1.08); }
+.battle-fight:disabled { opacity: 0.55; cursor: default; }
 
 /* ---------------- 状态条 ---------------- */
 

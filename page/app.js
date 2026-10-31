@@ -121,6 +121,7 @@ const ACTION_FRAMES = {
   "pet-clean": ["happy", "walk_2"],
   "pet-rest": ["sleep_1", "sleep_2"],
   "pet-pet-egg": ["walk_2", "walk_1"],
+  "pet-battle": ["happy", "walk_1", "walk_2"],
 };
 const ACTION_EFFECTS = {
   "pet-feed-snack": { color: "#f59e0b", shape: "crumb" },
@@ -128,6 +129,7 @@ const ACTION_EFFECTS = {
   "pet-clean": { color: "#38bdf8", shape: "drop" },
   "pet-rest": { color: "#a78bfa", shape: "sleep" },
   "pet-pet-egg": { color: "#fb7185", shape: "heart" },
+  "pet-battle": { color: "#f87171", shape: "star" },
 };
 let actionEffect = null;
 
