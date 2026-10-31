@@ -347,7 +347,9 @@ function renderScene() {
   drawGround();
   const isEgg = stage === 0 || sprite === "egg";
   if (isEgg) drawGlow(hue);
-  const bob = motionOK() && isEgg ? Math.round(Math.sin(tick * 0.9) * 2) : 0;
+  // 任何阶段都给一点呼吸式上下浮动；原来只在蛋期 bob，进化后看起来
+  // 就像整张图卡死了。幅度 2px，跟蛋的浮动同量级。
+  const bob = motionOK() ? Math.round(Math.sin(tick * 0.9) * 2) : 0;
   const frameSet = s?.frames || {};
   const available = pickFrameNames(s, frameSet);
   if (available.length > 0) {
@@ -418,7 +420,11 @@ function paintHero(s) {
     return;
   }
   $("pet-name").textContent = s.petName || p.node.nameEn;
-  $("pet-jp").textContent = s.petName ? `${p.node.nameEn} · ${p.node.nameJp}` : p.node.nameJp;
+  // 中日名重复时只显示一次，不变成 "DemiVeemon · DemiVeemon" 这种假双名。
+  const jp = p.node.nameJp;
+  $("pet-jp").textContent = s.petName
+    ? (jp && jp !== p.node.nameEn ? `${p.node.nameEn} · ${jp}` : p.node.nameEn)
+    : jp;
   const renameInput = $("pet-rename-input");
   if (renameInput && document.activeElement !== renameInput) renameInput.value = s.petName || "";
   $("pet-stage-badge").textContent = `gen ${p.generation} · ${p.stageName}`;

@@ -270,6 +270,9 @@ html.theme-dark .habitat--sakura .sky {
   align-items: center;
   gap: 10px;
 }
+/* hidden 属性只给 display:none，元素自身的 display:flex 会盖掉它，
+   沙盒与正常浏览器都如此——必须显式把 [hidden] 钉回 none。 */
+.battle[hidden] { display: none; }
 .battle b { flex: 0 0 auto; }
 .battle-fight {
   margin-left: auto;
