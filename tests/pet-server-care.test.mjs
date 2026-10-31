@@ -166,9 +166,10 @@ await test("state exposes default care snapshot, collection and frames after spa
   assert.deepEqual(state.collection.unlocked, []);
   assert.equal(state.collection.equippedTheme, null);
 
-  // no sprite art is bundled; the page uses its procedural fallback renderer
-  assert.equal(state.frame, null);
-  assert.deepEqual(state.frames, {});
+  // 帧目录已从上游 TUI 包恢复：当前物种应带一组具名像素帧
+  assert.equal(typeof state.frame?.content, "string");
+  assert.ok(state.frame.content.split("\n").length > 4, "expected multi-row pixel art");
+  assert.ok(Object.keys(state.frames || {}).length >= 2, "expected several named frames");
   assert.equal(state.petName, null);
   assert.equal(Array.isArray(state.dex), true);
   assert.equal(state.dex.length, 650);

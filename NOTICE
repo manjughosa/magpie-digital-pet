@@ -2,15 +2,15 @@ NOTICE for @magpie-community/page-digital-pet
 =============================================
 
 This package is a magpie page/plugin adapter. It does not bundle the upstream
-engine, the Digimon catalog, evolution data, or any sprite art.
-
-The engine is an external npm dependency:
+engine itself; the engine is an external npm dependency:
 @jcendal/opencode-digital-pet 0.18.0 (Apache License 2.0), by Jorge Cendal
 (jcendal) and Sergio Bugallo (sbugallo). At runtime that package is installed
 by the package manager; it is not vendored into this repository.
 
-The sidebar page draws a deterministic procedural pixel blob for each pet. No
-sprite frames or other restricted art assets are shipped in this package or in
-the npm tarball.
+The sidebar page's pixel sprite frames (lib/monster-frames.json) are extracted
+from that same Apache-2.0 upstream package's TUI bundle
+(MONSTER_FRAME_DATA, jcendal/digital-pet 0.18.0) by tools/extract-frames.mjs,
+and are redistributed here under the same Apache License 2.0. Sprites without
+a catalog entry fall back to a deterministic procedural pixel blob.
 
 Licensed under the Apache License, Version 2.0 (see LICENSE).
