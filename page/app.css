@@ -155,7 +155,7 @@ section {
   width: auto;
   max-width: 100%;
   height: 100%;
-  aspect-ratio: 288 / 176;
+  aspect-ratio: 490 / 300;
   image-rendering: pixelated;
   /* 指针交互要收到原始事件，不让浏览器把手势当滚动/缩放吃掉 */
   touch-action: none;
