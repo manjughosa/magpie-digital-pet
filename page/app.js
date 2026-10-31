@@ -121,7 +121,7 @@ const ACTION_FRAMES = {
   "pet-clean": ["happy", "walk_2"],
   "pet-rest": ["sleep_1", "sleep_2"],
   "pet-pet-egg": ["walk_2", "walk_1"],
-  "pet-battle": ["happy", "walk_1", "walk_2"],
+  "pet-battle": ["attack", "happy", "walk_1"],
   "pet-pet": ["happy", "walk_1"],
 };
 const ACTION_EFFECTS = {
