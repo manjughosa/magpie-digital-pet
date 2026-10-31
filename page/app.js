@@ -988,6 +988,10 @@ async function command(name, args) {
   if (busy) return;
   busy = true;
   commandButtons().forEach((b) => (b.disabled = true));
+  // 服务端写库被锁时会整进程卡住；fetch 必须有时限，否则按钮永远
+  // 停在禁用态，整个页面表现为“点一下全卡死”。
+  const ctrl = new AbortController();
+  const watchdog = setTimeout(() => ctrl.abort(), 10_000);
   try {
     const r = await fetch(`/api/command?token=${encodeURIComponent(apiToken())}`, {
       method: "POST",
@@ -996,6 +1000,7 @@ async function command(name, args) {
       // server 端按 body 内容解析，与 content-type 无关。
       headers: { "content-type": "text/plain" },
       body: JSON.stringify({ name, args }),
+      signal: ctrl.signal,
     });
     const j = await r.json().catch(() => null);
     if (!r.ok) {
@@ -1015,8 +1020,9 @@ async function command(name, args) {
     }
     if (j?.state) paint(j.state);
   } catch (e) {
-    say(`命令失败：${e?.message ?? e}`);
+    say(e?.name === "AbortError" ? "命令超时：宠物服务没响应，请稍后再试。" : `命令失败：${e?.message ?? e}`);
   } finally {
+    clearTimeout(watchdog);
     busy = false;
     // 只恢复命令按钮，档案 tab 不参与命令禁用状态
     commandButtons().forEach((b) => (b.disabled = false));
@@ -1115,8 +1121,10 @@ document.querySelectorAll(".tab-btn").forEach((btn) => {
 let tokenReloaded = false;
 
 async function load() {
+  const ctrl = new AbortController();
+  const watchdog = setTimeout(() => ctrl.abort(), 8_000);
   try {
-    const r = await fetch(`/api/state?token=${encodeURIComponent(apiToken())}`, { cache: "no-store" });
+    const r = await fetch(`/api/state?token=${encodeURIComponent(apiToken())}`, { cache: "no-store", signal: ctrl.signal });
     if (r.status === 403) {
       say("页面口令过期，正在刷新…");
       if (!tokenReloaded) {
@@ -1128,7 +1136,9 @@ async function load() {
     tokenReloaded = false;
     paint(await r.json());
   } catch (e) {
-    say(`刷新失败：${e?.message ?? e}`);
+    say(e?.name === "AbortError" ? "刷新超时：宠物服务没响应，下一轮再试。" : `刷新失败：${e?.message ?? e}`);
+  } finally {
+    clearTimeout(watchdog);
   }
 }
 
