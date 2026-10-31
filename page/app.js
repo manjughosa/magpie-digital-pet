@@ -406,8 +406,13 @@ function renderScene() {
         ctx.imageSmoothingEnabled = false;
         ctx.drawImage(img, CW / 2 - w / 2, GROUND_Y - h + bob, w, h);
       } else {
-        // 图片还在加载，画个占位轮廓
-        drawFallback(`${s.partner.node.id}:${stage}`, hue, bob);
+        // 加载中：画半透明色块占位，避免文本帧和 PNG 交替闪烁
+        ctx.save();
+        ctx.globalAlpha = 0.3;
+        ctx.fillStyle = `hsl(${hue} 60% 55%)`;
+        const pw = SPRITE_COLS * PX, ph = SPRITE_ROWS * PX;
+        ctx.fillRect(CW / 2 - pw / 2, GROUND_Y - ph + bob, pw, ph);
+        ctx.restore();
       }
     } else if (available.length > 0) {
       drawContent(frameSet[available[tick % available.length]], hue, bob);
@@ -464,6 +469,7 @@ function pngImage(url) {
 // 把文本帧语义映射到 omnipet 帧编号：0=站姿 1=走路 2=攻击 3=开心 4=愤怒
 // 5-6=受伤 7-8=睡眠 9=进食1 10=进食2 11=走路2 12=开心2 13=愤怒2 14=攻击2
 function pickPngFrame(state, tick, count) {
+  // 照顾操作的动作帧
   if (override && Date.now() < override.until) {
     const actionMap = {
       "pet-feed-snack": [9, 10], "pet-play": [3, 12], "pet-clean": [0, 1],
@@ -473,6 +479,11 @@ function pickPngFrame(state, tick, count) {
     const frames = actionMap[override.name] ?? [0, 1];
     return frames[tick % frames.length] % count;
   }
+  // 鼠标交互帧：拖拽=开心，点击跳跃=开心，悬停=开心微倾
+  if (inter.dragging) return 3 % count;
+  if (Date.now() < inter.hopUntil) return 3 % count;
+  if (Date.now() < inter.spinUntil) return 1 % count;
+  if (inter.hover) return [3, 0][tick % 2] % count;
   // 常态呼吸：站姿和走路交替
   return [0, 1][tick % 2] % count;
 }

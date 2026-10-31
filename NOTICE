@@ -13,4 +13,12 @@ from that same Apache-2.0 upstream package's TUI bundle
 and are redistributed here under the same Apache License 2.0. Sprites without
 a catalog entry fall back to a deterministic procedural pixel blob.
 
+The sidebar page additionally renders hi-def PNG sprite frames for 474 species
+(sprites/ directory, local-only, not distributed with this repository) sourced
+from sundeth/omnipet (https://github.com/sundeth/omnipet), licensed under
+Creative Commons Attribution-NonCommercial 4.0 International (CC BY-NC 4.0),
+© Anderson Porto 2025. Frame semantics (idle/walk/attack/happy/eat/sleep/injured)
+are decoded from the omnipet sprite atlas convention. Species without a PNG
+mapping continue to use the Apache-2.0 text frames or the procedural fallback.
+
 Licensed under the Apache License, Version 2.0 (see LICENSE).
