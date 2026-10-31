@@ -141,7 +141,8 @@ function habitatVariant() {
 }
 
 function spriteHue(sprite) {
-  if (habitatVariant() === "terminal") return 135; // 终端荧光绿
+  // 终端主题的荧光绿只属于背景（粒子、地面）；宠物自己的色相不被
+  // 主题覆盖，否则红/青宠物一切到终端就全变绿。
   return hashString(sprite || "egg") % 360;
 }
 
