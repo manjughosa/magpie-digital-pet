@@ -246,34 +246,63 @@ await test("pet-pet-egg is rejected with HTTP 400 once the partner leaves the eg
   });
 });
 
-await test("pet-battle resolves a pending evolution battle and refuses a second shot", async () => {
-  withRawDb(dbA, (db) => {
-    db.run("UPDATE partners SET current_node_id = '1-001', gauge = 10000000, battle_opponent_node_id = '1-003' WHERE retired_at IS NULL");
-    db.run(
-      "INSERT INTO partner_combat_progress (partner_id, node_id, victories, battle_id) VALUES ((SELECT partner_id FROM partners WHERE retired_at IS NULL LIMIT 1), '1-001', 2, 'test-battle-id') ON CONFLICT(partner_id) DO UPDATE SET node_id = '1-001', victories = 2, battle_id = 'test-battle-id'",
-    );
-  });
-  const before = await httpJson(serverA.port, "/api/state");
-  assert.equal(before.json.partner.battle?.id, "1-003");
+await test("pet-battle: first loss halves the gauge, rematch always wins", async () => {
+  const seedBattle = () => {
+    withRawDb(dbA, (db) => {
+      db.run("UPDATE partners SET current_node_id = '1-001', gauge = 10000000, battle_opponent_node_id = '1-003' WHERE retired_at IS NULL");
+      db.run(
+        "INSERT INTO partner_combat_progress (partner_id, node_id, victories, battle_id) VALUES ((SELECT partner_id FROM partners WHERE retired_at IS NULL LIMIT 1), '1-001', 2, 'test-battle-id') ON CONFLICT(partner_id) DO UPDATE SET node_id = '1-001', victories = 2, battle_id = 'test-battle-id'",
+      );
+    });
+  };
+  const losses = () =>
+    withRawDb(dbA, (db) => {
+      try {
+        return db.query("SELECT losses FROM magpie_pet_battle_retries").get()?.losses ?? 0;
+      } catch {
+        return 0;
+      }
+    });
 
-  const res = await httpJson(serverA.port, "/api/command", {
+  // 第一场：强制作弊败北（random ≥ 0.5）→ gauge 退回一半，记下连败
+  seedBattle();
+  const realRandom = Math.random;
+  Math.random = () => 0.99;
+  try {
+    const lost = await httpJson(serverA.port, "/api/command", {
+      method: "POST",
+      body: { name: "pet-battle" },
+    });
+    assert.equal(lost.status, 200);
+    assert.match(lost.json.text, /败给/);
+    assert.match(lost.json.text, /必胜/);
+    assert.equal(lost.json.state.partner.battle, null);
+    assert.equal(lost.json.state.partner.gauge, 5000000, "loss must halve the gauge, not wipe it");
+    assert.equal(losses(), 1);
+
+    // 第二场：同样的作弊 random 也必须赢（连胜连败规则）
+    seedBattle();
+    const rematch = await httpJson(serverA.port, "/api/command", {
+      method: "POST",
+      body: { name: "pet-battle" },
+    });
+    assert.equal(rematch.status, 200);
+    assert.match(rematch.json.text, /对决胜利/);
+    assert.equal(rematch.json.state.partner.battle, null);
+    assert.equal(rematch.json.state.partner.gauge, 0);
+    const node = rematch.json.state.partner.node;
+    assert.ok(node.id === "1-001" || node.stage === 2, `unexpected node after rematch: ${JSON.stringify(node)}`);
+    assert.equal(losses(), 0, "win must clear the loss streak");
+  } finally {
+    Math.random = realRandom;
+  }
+
+  const idle = await httpJson(serverA.port, "/api/command", {
     method: "POST",
     body: { name: "pet-battle" },
   });
-  assert.equal(res.status, 200);
-  assert.match(res.json.text, /对决/);
-  assert.equal(res.json.state.partner.battle, null);
-  assert.equal(res.json.state.partner.gauge, 0);
-  // 随机结局：留在当前形态（胜无可进路线或败北）或进入下一阶段分支
-  const node = res.json.state.partner.node;
-  assert.ok(node.id === "1-001" || node.stage === 2, `unexpected node after battle: ${JSON.stringify(node)}`);
-
-  const again = await httpJson(serverA.port, "/api/command", {
-    method: "POST",
-    body: { name: "pet-battle" },
-  });
-  assert.equal(again.status, 400);
-  assert.equal(again.json.reason, "no-pending-battle");
+  assert.equal(idle.status, 400);
+  assert.equal(idle.json.reason, "no-pending-battle");
 
   withRawDb(dbA, (db) => {
     db.run("UPDATE partners SET current_node_id = '0-001', gauge = 0, battle_opponent_node_id = NULL WHERE retired_at IS NULL");
