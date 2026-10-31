@@ -3,7 +3,18 @@
 "use strict";
 
 const $ = (id) => document.getElementById(id);
-const apiHeaders = () => ({ "x-magpie-pet-token": window.PET_TOKEN || "" });
+// 页面跑在 magpie 的 sandbox="allow-scripts" 沙盒里：opaque origin 下
+// window.location 读不到东西（query 由 boot.js 透传时会带口令），而
+// 自定义 header 会触发 CORS preflight，在部分 WebView 沙盒里不放行。
+// 所以 API 口令统一走 ?token= 查询参数；读不到 query 时退回页面注入的
+// window.PET_TOKEN（正常同源打开时也有效）。
+const apiToken = () => {
+  try {
+    const q = new URLSearchParams(location.search).get("token");
+    if (q) return q;
+  } catch {}
+  return window.PET_TOKEN || "";
+};
 
 const fmt = (n) => {
   n = Number(n) || 0;
@@ -754,9 +765,12 @@ async function command(name, args) {
   busy = true;
   commandButtons().forEach((b) => (b.disabled = true));
   try {
-    const r = await fetch("/api/command", {
+    const r = await fetch(`/api/command?token=${encodeURIComponent(apiToken())}`, {
       method: "POST",
-      headers: { "content-type": "application/json", ...apiHeaders() },
+      // text/plain 让请求保持 CORS simple request 语义（opaque origin
+      // 下 application/json 会触发 preflight，部分 WebView 不放行）；
+      // server 端按 body 内容解析，与 content-type 无关。
+      headers: { "content-type": "text/plain" },
       body: JSON.stringify({ name, args }),
     });
     const j = await r.json().catch(() => null);
@@ -871,18 +885,23 @@ document.querySelectorAll(".tab-btn").forEach((btn) => {
 
 // ---------- polling ----------
 
+// opaque origin（magpie 沙盒 iframe）下 sessionStorage 访问抛 SecurityError，
+// 防护成纯内存标记即可；token 过期时无条件刷新一次，最坏是循环由
+// server 换 token + 页面带新 token 打开后自然终止。
+let tokenReloaded = false;
+
 async function load() {
   try {
-    const r = await fetch("/api/state", { cache: "no-store", headers: apiHeaders() });
+    const r = await fetch(`/api/state?token=${encodeURIComponent(apiToken())}`, { cache: "no-store" });
     if (r.status === 403) {
       say("页面口令过期，正在刷新…");
-      if (!sessionStorage.getItem("pet-token-reloaded")) {
-        sessionStorage.setItem("pet-token-reloaded", "1");
+      if (!tokenReloaded) {
+        tokenReloaded = true;
         setTimeout(() => location.reload(), 300);
       }
       return;
     }
-    sessionStorage.removeItem("pet-token-reloaded");
+    tokenReloaded = false;
     paint(await r.json());
   } catch (e) {
     say(`刷新失败：${e?.message ?? e}`);
