@@ -6,7 +6,7 @@
 
 引擎来自外部依赖 [@jcendal/opencode-digital-pet](https://github.com/jcendal/digital-pet) 0.18.0（Apache-2.0，见 NOTICE），本仓库不 vendored 上游代码、不打包图鉴数据。
 
-**精灵图**：474 个物种使用 [sundeth/omnipet](https://github.com/sundeth/omnipet) 的高清 PNG 精灵帧（CC BY-NC 4.0，© Anderson Porto 2025，见 NOTICE），经 [@jcendal/digital-pet](https://github.com/jcendal/digital-pet) 的文字帧数据间接参考了 [Tortoiseshel's Full Color Digimon Dot Sprites](https://withthewill.net/threads/22970-Full-Color-Digimon-Dot-Sprites)。其余物种回退到程序化像素兜底图。精灵帧文件为本地资产（`sprites/` 目录，38MB），不入库不分发。
+**精灵图**：650 只图鉴里有 648 只使用 [sundeth/omnipet](https://github.com/sundeth/omnipet) 的 PNG 精灵帧（CC BY-NC 4.0，© Anderson Porto 2025，见 NOTICE）——497 只取它的高清帧（`monsters_hidef`，54×48），151 只上游只有点阵帧（`monsters`，48×48），一并移植以免再出现文字帧方块；Moonmon、Sunmon 上游两套都没有，只剩文字帧兜底。帧数据经 [@jcendal/digital-pet](https://github.com/jcendal/digital-pet) 间接参考了 [Tortoiseshel's Full Color Digimon Dot Sprites](https://withthewill.net/threads/22970-Full-Color-Digimon-Dot-Sprites)。精灵帧文件为本地资产（`sprites/` 目录，44MB），不入库不分发。
 
 **鼠标交互**（画布上）：抚摸（按住来回划 → 心形粒子 + 亲密）、点击（跳跃）、悬停（注视微光 + 开心帧）、拖拽（拎起来晃 → 开心帧）、双击（转圈 → 走路帧）、快速划过（眩晕星星）。交互时 PNG 帧实时切换表情。
 

@@ -1,2 +1,10 @@
 charframe/
 sprites/
+
+# runtime + local-only
+node_modules/
+data/
+.upstream/
+*.bak-*
+tests/debug.log
+tests/tmp-selftest.db*

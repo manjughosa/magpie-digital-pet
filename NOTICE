@@ -13,10 +13,15 @@ from that same Apache-2.0 upstream package's TUI bundle
 and are redistributed here under the same Apache License 2.0. Sprites without
 a catalog entry fall back to a deterministic procedural pixel blob.
 
-The sidebar page additionally renders hi-def PNG sprite frames for 474 species
-(sprites/ directory, local-only, not distributed with this repository) sourced
-from sundeth/omnipet (https://github.com/sundeth/omnipet), licensed under
-Creative Commons Attribution-NonCommercial 4.0 International (CC BY-NC 4.0),
+The sidebar page additionally renders PNG sprite frames for 648 of the 650
+catalog species (sprites/ directory, local-only, not distributed with this
+repository) sourced from sundeth/omnipet
+(https://github.com/sundeth/omnipet): 497 species from its hi-def set
+(monsters_hidef, 54x48 frames) and 151 from its base dot set (monsters,
+48x48 frames, used where omnipet ships no hi-def art). Kinds absent from
+both sets (Moonmon, Sunmon) still fall back to the engine's text frames.
+Licensed under Creative Commons Attribution-NonCommercial 4.0 International
+(CC BY-NC 4.0),
 © Anderson Porto 2025. The omnipet sprites are in turn derived from
 Tortoiseshel's Full Color Digimon Dot Sprites
 (https://withthewill.net/threads/22970-Full-Color-Digimon-Dot-Sprites).
