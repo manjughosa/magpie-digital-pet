@@ -15,6 +15,7 @@
 </header>
 
 <main>
+  <div class="col-left">
   <section class="habitat" id="habitat" aria-label="宠物栖息地">
     <div class="sky">
       <canvas id="pet-canvas" width="490" height="300" role="img" aria-label="宠物像素形象"></canvas>
@@ -43,8 +44,7 @@
     </div>
   </section>
 
-  <div class="hud-grid">
-    <div class="hud-main">
+  <div class="hud-main">
       <section id="care-bars" aria-label="状态">
         <h2>状态</h2>
         <div class="care-row" data-stat="satiety">
@@ -98,7 +98,7 @@
       </section>
     </div>
 
-    <aside class="hud-side">
+    <aside class="hud-side" style="display:contents">
       <section id="manage" aria-label="管理">
         <h2>管理</h2>
         <div class="btn-row">
@@ -135,7 +135,9 @@
       </section>
     </aside>
   </div>
+  </div>
 
+  <div class="col-right">
   <section class="archive" id="archive" aria-label="档案">
     <div class="tab-bar" role="tablist" aria-label="档案切换">
       <button type="button" class="tab-btn active" role="tab" aria-selected="true" aria-controls="panel-dex" data-tab="dex">图鉴与切换</button>
@@ -167,6 +169,7 @@
       </section>
     </div>
   </section>
+  </div>
 
   <div id="say" role="status" aria-live="polite"></div>
 </main>
