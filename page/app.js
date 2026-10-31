@@ -1068,6 +1068,16 @@ document.querySelectorAll("[data-command]").forEach((btn) => {
       command(name, value);
       return;
     }
+    if (name === "pet-pin-current") {
+      // 一键钉住当前展示的这只（等于在输入框里填它的 ID 再点钉住）
+      const id = lastState?.partner?.node?.id;
+      if (!id) {
+        say("现在没有可以钉住的宠物。");
+        return;
+      }
+      command("digital-pet-set", id);
+      return;
+    }
     if (name === "digital-pet-set") {
       const id = $("set-id").value.trim();
       if (!/^[0-9]-[0-9]{1,3}$/.test(id)) {
