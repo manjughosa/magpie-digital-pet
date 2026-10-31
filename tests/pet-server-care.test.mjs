@@ -177,6 +177,28 @@ await test("state exposes default care snapshot, collection and frames after spa
   assert.equal(state.dex.find((d) => d.id === "0-001").current, true);
 });
 
+await test("dex lists one entry per partner's current form, not the evolution history", async () => {
+  let partnerId = null;
+  withRawDb(dbA, (db) => {
+    partnerId = db.query("SELECT partner_id FROM partners WHERE retired_at IS NULL LIMIT 1").get().partner_id;
+    db.run(
+      `INSERT INTO partner_events (event_id, partner_id, kind, current_node_id, gauge, is_terminal, token_delta, receipt_key, created_at)
+       VALUES (?, ?, 'evolved', '2-001', 0, 0, NULL, NULL, ?)`,
+      ["dex-lineage-test", partnerId, new Date().toISOString()],
+    );
+  });
+
+  const state = await httpJson(serverA.port, "/api/state");
+  assert.equal(state.status, 200);
+  // 过渡形态不占图鉴条目：2-001 只是进化史里的节点，从未当过当前伙伴
+  assert.equal(state.json.dex.find((d) => d.id === "2-001").unlocked, false);
+  // 蛋也不占条目，只有当前伙伴那一只是解锁的
+  assert.equal(state.json.dex.find((d) => d.id === "0-001").unlocked, true);
+  assert.equal(state.json.dex.filter((d) => d.unlocked).length, 1);
+  assert.equal(state.json.partner.id, partnerId);
+  assert.equal(state.json.partners.length, 1);
+});
+
 await test("rename stores a per-partner display name", async () => {
   const renamed = await httpJson(serverA.port, "/api/command", {
     method: "POST",
@@ -565,7 +587,10 @@ await test("spawn unlocks from baby II upward, is rate limited, then uses the no
   assert.equal(spawn.status, 200);
   const state = spawn.json.state;
   assert.equal(state.partner.generation, 2);
-  assert.equal(state.partner.node.id, "1-001");
+  // 1-001 already appeared in this save's lineage, so the pool skips it and
+  // hands out the first unseen baby form instead of repeating the same one
+  assert.equal(state.partner.node.id, "1-002");
+  assert.equal(state.partner.node.stage, 1);
   assert.equal(state.care.state.partnerId, state.partner.id);
   assert.ok(Math.abs(state.care.state.satiety - 72) < 0.1);
   assert.ok(Math.abs(state.care.state.bond - 0) < 0.1);

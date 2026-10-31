@@ -58,10 +58,17 @@ test("default save path is outside the plugin code directory", () => {
   assert.ok(legacyDatabasePath().includes(join("data", "pet.db")));
 });
 
-test("plugin does not write the upstream OpenCode config", async () => {
+test("plugin only reads the upstream OpenCode config, never writes it", async () => {
   const adapterSource = readFileSync(join(ROOT, "lib", "pet.adapter.mjs"), "utf8");
-  assert.ok(!adapterSource.includes("opencode-digital-pet.json"), "must not target the upstream global config file");
-  assert.ok(!adapterSource.includes("ensureGrowthSettings"), "must not rewrite upstream growth settings");
+  // 引擎自己按这份配置推进化；插件只读它来对齐进度条显示，绝不改写
+  assert.ok(adapterSource.includes("readFileSync"), "adapter reads engine settings read-only");
+  for (const pattern of [
+    /writeFileSync\([^)]*opencode-digital-pet\.json/,
+    /copyFileSync\([^)]*opencode-digital-pet\.json/,
+    /ensureGrowthSettings/,
+  ]) {
+    assert.ok(!pattern.test(adapterSource), `must not write upstream config: ${pattern}`);
+  }
 });
 
 test("README documents the new care gameplay on the sidebar pet page", () => {

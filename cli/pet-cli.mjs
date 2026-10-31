@@ -14,13 +14,15 @@ import { join } from "node:path";
 import { existsSync } from "node:fs";
 import { Database } from "bun:sqlite";
 
+import { stageThresholds } from "../lib/pet.adapter.mjs";
+
 const HERE = import.meta.dir;
 const ADAPTER = join(HERE, "..", "lib", "pet.adapter.mjs");
 const { createPetAdapter, nodeById, defaultDatabasePath, migrateLegacyDatabase } = await import(ADAPTER);
 const { createCareStore } = await import(join(HERE, "..", "lib", "pet.care-store.mjs"));
 
 const STAGE_NAMES = ["egg", "baby I", "baby II", "child", "adult", "perfect", "ultimate", "super ultimate"];
-const STAGE_THRESHOLDS = [5e6, 1e7, 2e7, 4e7, 75e6, 125e6, 2e8, 3e8];
+const STAGE_THRESHOLDS = stageThresholds();
 
 const argv = process.argv.slice(2);
 const dbFlagIndex = argv.indexOf("--db");
