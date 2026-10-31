@@ -150,7 +150,7 @@ test("destructive spawn requires a second click and dex switch warns about pinni
   assert.ok(js.includes("spawnConfirmUntil"), "spawn double-confirm state missing");
   assert.ok(js.includes("再点一次确认孵新蛋"), "spawn confirmation copy missing");
   assert.ok(js.includes("当前伙伴达到 baby II 后才能孵下一颗蛋"), "spawn stage gate missing");
-  assert.ok(js.includes("切换会展示并钉住该形态"), "dex switch warning missing");
+  assert.ok(js.includes("钉住后页面展示这只"), "dex pin warning missing");
   assert.ok(html.includes('data-command="pet-unpin"'), "unpin button missing");
 });
 

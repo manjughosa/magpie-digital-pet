@@ -759,8 +759,10 @@ function paintDex(s) {
     btn.type = "button";
     btn.dataset.command = "digital-pet-set";
     btn.dataset.args = item.id;
-    btn.textContent = item.current ? "正在展示" : "切换";
-    btn.title = "切换会展示并钉住该形态，暂时停止生长；可在管理里取消钉住。";
+    // 这不是“换成这只宠物”，而是把一只退役形态钉住展示：真实伙伴被遮住
+    // 且暂停生长。文案必须把这个语义写出来，否则用户会以为在换宠。
+    btn.textContent = item.current ? "正在钉住展示" : "钉住展示这只";
+    btn.title = "钉住后页面展示这只（真实伙伴被遮住并暂停生长），在「管理 → 取消钉住」里恢复。";
     btn.disabled = item.current;
     btn.addEventListener("click", () => command("digital-pet-set", item.id));
     card.append(title, jp, status, btn);
