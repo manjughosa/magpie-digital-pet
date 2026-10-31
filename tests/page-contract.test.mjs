@@ -154,6 +154,18 @@ test("destructive spawn requires a second click and dex switch warns about pinni
   assert.ok(html.includes('data-command="pet-unpin"'), "unpin button missing");
 });
 
+test("canvas pointer interactions are wired: petting, click, hover, drag, dblclick and fast swipe", () => {
+  for (const event of ["pointerdown", "pointermove", "pointerup", "pointerleave", "dblclick"]) {
+    assert.ok(js.includes(`addEventListener("${event}"`), `canvas ${event} handler missing`);
+  }
+  assert.ok(js.includes('command("pet-pet")'), "petting must fire the pet-pet care command");
+  assert.ok(js.includes("hopUntil"), "click hop missing");
+  assert.ok(js.includes("spinUntil"), "double-click spin missing");
+  assert.ok(js.includes("dizzyUntil"), "fast-swipe dizzy missing");
+  assert.ok(js.includes("inter.dragX"), "drag offset missing");
+  assert.ok(js.includes("inter.hover"), "hover highlight missing");
+});
+
 test("renderScene draws from a local frame set, never bare window.frames", () => {
   const start = js.indexOf("function renderScene");
   const end = js.indexOf("function restartAnimation");

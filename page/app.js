@@ -122,6 +122,7 @@ const ACTION_FRAMES = {
   "pet-rest": ["sleep_1", "sleep_2"],
   "pet-pet-egg": ["walk_2", "walk_1"],
   "pet-battle": ["happy", "walk_1", "walk_2"],
+  "pet-pet": ["happy", "walk_1"],
 };
 const ACTION_EFFECTS = {
   "pet-feed-snack": { color: "#f59e0b", shape: "crumb" },
@@ -130,6 +131,7 @@ const ACTION_EFFECTS = {
   "pet-rest": { color: "#a78bfa", shape: "sleep" },
   "pet-pet-egg": { color: "#fb7185", shape: "heart" },
   "pet-battle": { color: "#f87171", shape: "star" },
+  "pet-pet": { color: "#fb7185", shape: "heart" },
 };
 let actionEffect = null;
 
@@ -350,13 +352,60 @@ function renderScene() {
   // 任何阶段都给一点呼吸式上下浮动；原来只在蛋期 bob，进化后看起来
   // 就像整张图卡死了。幅度 2px，跟蛋的浮动同量级。
   const bob = motionOK() ? Math.round(Math.sin(tick * 0.9) * 2) : 0;
+  // 指针交互的位移/旋转/形变，叠加在呼吸浮动之上
+  const nowMs = Date.now();
+  let dx = 0;
+  let dy = 0;
+  let rot = 0;
+  if (inter.dragging) dx = inter.dragX;
+  else if (Math.abs(inter.dragX) > 0.5) {
+    inter.dragX *= 0.82; // 松手后弹簧回位
+    dx = inter.dragX;
+  } else inter.dragX = 0;
+  if (nowMs < inter.hopUntil) {
+    const k = 1 - (inter.hopUntil - nowMs) / 450;
+    dy = -Math.round(Math.sin(k * Math.PI) * 14);
+  }
+  if (nowMs < inter.spinUntil) {
+    rot = (1 - (inter.spinUntil - nowMs) / 650) * Math.PI * 2;
+  }
+  const squash = inter.squish;
+  inter.squish *= 0.8;
+  // 悬停注视：宠物身上一层跟随呼吸的微光
+  if (inter.hover && s?.partner && motionOK()) {
+    ctx.save();
+    ctx.globalAlpha = 0.1 + 0.05 * Math.sin(tick * 0.9);
+    ctx.fillStyle = `hsl(${hue} 85% 70%)`;
+    ctx.beginPath();
+    ctx.ellipse(CW / 2, GROUND_Y - (SPRITE_ROWS * PX) / 2, (SPRITE_COLS * PX) / 1.9, (SPRITE_ROWS * PX) / 1.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
   const frameSet = s?.frames || {};
   const available = pickFrameNames(s, frameSet);
+  ctx.save();
+  if (dx || dy || rot || squash > 0.05) {
+    const cx = CW / 2;
+    const cy = GROUND_Y - (SPRITE_ROWS * PX) / 2;
+    ctx.translate(cx + dx, cy + dy);
+    if (rot) ctx.rotate(rot);
+    if (squash > 0.05) ctx.scale(1 + squash * 0.12, 1 - squash * 0.18);
+    ctx.translate(-cx, -cy);
+  }
   if (available.length > 0) {
     drawContent(frameSet[available[tick % available.length]], hue, bob);
   } else if (s?.partner) {
     drawFallback(`${s.partner.node.id}:${stage}`, hue, bob);
   }
+  ctx.restore();
+  // 快速划过的眩晕：绕头顶转圈的星星
+  if (nowMs < inter.dizzyUntil && motionOK()) {
+    for (let i = 0; i < 3; i += 1) {
+      const a = tick * 0.8 + (i * Math.PI * 2) / 3;
+      drawFxShape("star", CW / 2 + Math.cos(a) * 26, GROUND_Y - SPRITE_ROWS * PX - 6 + Math.sin(a) * 6, 3, "#f59e0b");
+    }
+  }
+  renderFx();
   drawActionEffect();
 }
 
@@ -375,6 +424,173 @@ function restartAnimation() {
   }
 }
 restartAnimation();
+
+// ---------- canvas pointer interactions ----------
+// 六种画布交互：抚摸（按住来回划）、点击（跳一下）、悬停（注视微光）、
+// 拖拽（拎起来晃，松手弹回）、双击（转一圈）、快速划过（眩晕星星）。
+// 全部先给视觉反馈；抚摸节流后调用 pet-pet 命令涨亲密。
+const inter = {
+  hover: false,
+  dragging: false,
+  downAt: 0,
+  downX: 0,
+  dragX: 0,
+  hopUntil: 0,
+  spinUntil: 0,
+  dizzyUntil: 0,
+  squish: 0,
+  lastStrokeAt: 0,
+  lastPetCmdAt: 0,
+};
+const fxParticles = []; // {x0,y0,vx,vy,born,life,color,shape}
+let strokePrev = null;
+let lastMove = null;
+
+function petHitBox() {
+  const half = (SPRITE_COLS * PX) / 2;
+  return { x0: CW / 2 - half, x1: CW / 2 + half, y0: GROUND_Y - SPRITE_ROWS * PX, y1: GROUND_Y };
+}
+function canvasPoint(e) {
+  const r = canvas.getBoundingClientRect();
+  return { x: ((e.clientX - r.left) / r.width) * CW, y: ((e.clientY - r.top) / r.height) * CH };
+}
+function inPet(p) {
+  const b = petHitBox();
+  return p.x >= b.x0 && p.x <= b.x1 && p.y >= b.y0 && p.y <= b.y1;
+}
+function spawnFx(x, y, color, shape, n = 3) {
+  for (let i = 0; i < n; i += 1) {
+    fxParticles.push({
+      x0: x + (Math.random() - 0.5) * 24,
+      y0: y + (Math.random() - 0.5) * 10,
+      vx: (Math.random() - 0.5) * 0.05,
+      vy: -(0.06 + Math.random() * 0.08),
+      born: Date.now(),
+      life: 900 + Math.random() * 500,
+      color,
+      shape,
+    });
+  }
+}
+function drawFxShape(shape, x, y, size, color) {
+  ctx.fillStyle = color;
+  if (shape === "heart") {
+    ctx.beginPath();
+    ctx.arc(x - size * 0.45, y, size * 0.55, 0, Math.PI * 2);
+    ctx.arc(x + size * 0.45, y, size * 0.55, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(x - size, y + size * 0.25);
+    ctx.lineTo(x + size, y + size * 0.25);
+    ctx.lineTo(x, y + size * 1.35);
+    ctx.closePath();
+    ctx.fill();
+    return;
+  }
+  if (shape === "star") {
+    ctx.beginPath();
+    for (let p = 0; p < 8; p += 1) {
+      const a = (Math.PI / 4) * p;
+      const r = p % 2 === 0 ? size * 1.7 : size * 0.65;
+      const px = x + Math.cos(a) * r;
+      const py = y + Math.sin(a) * r;
+      if (p === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.fill();
+    return;
+  }
+  ctx.beginPath();
+  ctx.arc(x, y, size, 0, Math.PI * 2);
+  ctx.fill();
+}
+function renderFx() {
+  const now = Date.now();
+  for (let i = fxParticles.length - 1; i >= 0; i -= 1) {
+    const f = fxParticles[i];
+    const age = now - f.born;
+    if (age > f.life) {
+      fxParticles.splice(i, 1);
+      continue;
+    }
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, 1 - age / f.life);
+    drawFxShape(f.shape, f.x0 + f.vx * age, f.y0 + f.vy * age, 3.5, f.color);
+    ctx.restore();
+  }
+}
+
+canvas.addEventListener("pointerdown", (e) => {
+  const p = canvasPoint(e);
+  if (!inPet(p)) return;
+  try { canvas.setPointerCapture(e.pointerId); } catch {}
+  inter.downAt = Date.now();
+  inter.downX = p.x;
+  inter.dragging = false;
+  strokePrev = p;
+});
+canvas.addEventListener("pointermove", (e) => {
+  const p = canvasPoint(e);
+  const over = inPet(p);
+  inter.hover = over;
+  canvas.style.cursor = inter.dragging ? "grabbing" : over ? "pointer" : "";
+  const now = Date.now();
+  if (inter.downAt) {
+    // 拖拽：水平位移超过阈值才算拎起来，避免误触点击
+    const dx = p.x - inter.downX;
+    if (Math.abs(dx) > 12) {
+      inter.dragging = true;
+      inter.dragX = Math.max(-70, Math.min(70, dx));
+    }
+    // 抚摸：按住并在宠物身上来回划，间隔出爱心，节流后真正计数
+    if (strokePrev) {
+      const moved = Math.hypot(p.x - strokePrev.x, p.y - strokePrev.y);
+      if (over && moved > 8 && now - inter.lastStrokeAt > 180) {
+        inter.lastStrokeAt = now;
+        spawnFx(p.x, p.y - 12, "#fb7185", "heart", 2);
+        if (now - inter.lastPetCmdAt > 30_000) {
+          inter.lastPetCmdAt = now;
+          command("pet-pet");
+        }
+      }
+      strokePrev = p;
+    }
+  } else if (motionOK()) {
+    // 快速划过：不按键，指针高速掠过宠物 → 眩晕星星
+    if (lastMove && over) {
+      const v = Math.abs(p.x - lastMove.x) / Math.max(1, now - lastMove.t);
+      if (v > 1.1 && now > inter.dizzyUntil - 400) {
+        inter.dizzyUntil = now + 1200;
+      }
+    }
+  }
+  lastMove = { x: p.x, t: now };
+});
+function endPointer(e) {
+  const p = e ? canvasPoint(e) : null;
+  const held = Date.now() - (inter.downAt || 0);
+  if (inter.downAt && !inter.dragging && p && inPet(p) && held < 400) {
+    // 点击：跳一下 + 落地压扁回弹
+    inter.hopUntil = Date.now() + 450;
+    inter.squish = 1;
+    spawnFx(p.x, p.y - 24, "#facc15", "star", 3);
+  }
+  inter.downAt = 0;
+  inter.dragging = false;
+  strokePrev = null;
+}
+canvas.addEventListener("pointerup", endPointer);
+canvas.addEventListener("pointercancel", endPointer);
+canvas.addEventListener("pointerleave", () => {
+  inter.hover = false;
+  canvas.style.cursor = "";
+  endPointer(null);
+});
+canvas.addEventListener("dblclick", (e) => {
+  if (!inPet(canvasPoint(e))) return;
+  inter.spinUntil = Date.now() + 650;
+  spawnFx(CW / 2, GROUND_Y - SPRITE_ROWS * PX - 8, "#a78bfa", "star", 4);
+});
 
 // ---------- status & DOM painting ----------
 

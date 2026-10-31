@@ -76,8 +76,13 @@ test("reopening the database runs migrations once and keeps data", () => {
     .all()
     .map((row) => row.name)
     .sort();
+  const columns = raw
+    .query("PRAGMA table_info(magpie_pet_care_state)")
+    .all()
+    .map((row) => row.name);
   raw.close();
-  assert.equal(version, 2);
+  assert.equal(version, 3);
+  assert.ok(columns.includes("cooldown_pet"), "v3 migration must add cooldown_pet");
   assert.deepEqual(tables, [
     "magpie_pet_achievements",
     "magpie_pet_care_events",

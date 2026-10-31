@@ -34,8 +34,8 @@ test("CARE_LIMITS exposes the documented limits", () => {
   assert.deepEqual(CARE_LIMITS, { min: 0, max: 100, maxOfflineMs: 24 * HOUR });
 });
 
-test("CARE_ACTIONS lists exactly the five care actions", () => {
-  assert.deepEqual(Object.keys(CARE_ACTIONS).sort(), ["clean", "petEgg", "play", "rest", "snack"]);
+test("CARE_ACTIONS lists exactly the six care actions", () => {
+  assert.deepEqual(Object.keys(CARE_ACTIONS).sort(), ["clean", "pet", "petEgg", "play", "rest", "snack"]);
 });
 
 test("createDefaultCareState returns the documented initial values", () => {
@@ -44,7 +44,7 @@ test("createDefaultCareState returns the documented initial values", () => {
   assert.equal(state.partnerId, "p1");
   assert.equal(state.lastDecayAt, 1000);
   assert.equal(state.updatedAt, 1000);
-  assert.deepEqual(state.cooldowns, { snack: 0, play: 0, clean: 0, rest: 0, petEgg: 0 });
+  assert.deepEqual(state.cooldowns, { snack: 0, play: 0, clean: 0, rest: 0, petEgg: 0, pet: 0 });
 });
 
 test("decay caps 48 hours offline to 24 hours and never lowers bond", () => {
@@ -150,6 +150,18 @@ test("petEgg only works while context.stage is 0", () => {
   const missing = applyCareAction(state, "petEgg", 0);
   assert.equal(missing.ok, false);
   assert.equal(missing.reason, "wrong-stage");
+});
+
+test("pet works at any stage, grants bond and mood, and uses a 3 minute cooldown", () => {
+  const state = { ...createDefaultCareState("p1", 0), bond: 1, mood: 40 };
+  const first = applyCareAction(state, "pet", 0);
+  assert.equal(first.ok, true);
+  assert.deepEqual(pick(first.state, ["bond", "mood"]), [3, 41]);
+  assert.equal(first.state.cooldowns.pet, 3 * 60 * 1000);
+
+  const again = applyCareAction(first.state, "pet", 60 * 1000);
+  assert.equal(again.ok, false);
+  assert.equal(again.reason, "cooldown");
 });
 
 test("an unknown action is rejected without touching the state", () => {

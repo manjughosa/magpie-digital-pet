@@ -157,6 +157,9 @@ section {
   height: 100%;
   aspect-ratio: 288 / 176;
   image-rendering: pixelated;
+  /* 指针交互要收到原始事件，不让浏览器把手势当滚动/缩放吃掉 */
+  touch-action: none;
+  user-select: none;
 }
 
 .habitat-info { padding: 14px 18px 16px; }
