@@ -755,17 +755,16 @@ function paintDex(s) {
       grid.append(card);
       continue;
     }
-    status.textContent = item.current ? "当前宠物" : "已解锁";
+    const isEngine = s.partner?.engineNode?.id === item.id;
+    status.textContent = isEngine ? "当前宠物" : item.current ? "展示中" : "已解锁";
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.dataset.command = "digital-pet-set";
+    btn.dataset.command = "pet-display";
     btn.dataset.args = item.id;
-    // 这不是“换成这只宠物”，而是把一只退役形态钉住展示：真实伙伴被遮住
-    // 且暂停生长。文案必须把这个语义写出来，否则用户会以为在换宠。
-    btn.textContent = item.current ? "正在钉住展示" : "钉住展示这只";
-    btn.title = "钉住后页面展示这只（真实伙伴被遮住并暂停生长），在「管理 → 取消钉住」里恢复。";
-    btn.disabled = item.current;
-    btn.addEventListener("click", () => command("digital-pet-set", item.id));
+    // 图鉴只管看与切显示：不钉住、不停生长。钉住是管理卡的专属能力。
+    btn.textContent = item.current && !isEngine ? "切回当前伙伴" : "显示这只";
+    btn.title = "只把页面切换成这只看看，不钉住、不影响生长；要钉住（暂停生长）请去「管理」。";
+    btn.addEventListener("click", () => command("pet-display", item.id));
     card.append(title, jp, status, btn);
     grid.append(card);
   }

@@ -310,6 +310,58 @@ await test("pet-battle: first loss halves the gauge, rematch always wins", async
   });
 });
 
+await test("pet-display only changes display, never pins; unpin clears both", async () => {
+  // 塞一只退役伙伴让图鉴里有第二只可展示
+  withRawDb(dbA, (db) => {
+    db.run(
+      "INSERT INTO partners (partner_id, generation, current_node_id, gauge, is_terminal, created_at, retired_at) VALUES ('partner-display-test', 99, '1-001', 0, 0, '2026-01-01T00:00:00.000Z', '2026-01-02T00:00:00.000Z')",
+    );
+  });
+  try {
+
+  const show = await httpJson(serverA.port, "/api/command", {
+    method: "POST",
+    body: { name: "pet-display", args: "1-001" },
+  });
+  assert.equal(show.status, 200);
+  assert.equal(show.json.state.displaying, "1-001");
+  assert.equal(show.json.state.pinned, null, "display switch must never set the pin");
+  assert.equal(show.json.state.partner.node.id, "1-001");
+
+  const back = await httpJson(serverA.port, "/api/command", {
+    method: "POST",
+    body: { name: "pet-display", args: "1-001" },
+  });
+  assert.equal(back.status, 200);
+  assert.equal(back.json.state.displaying, null, "clicking the shown one again returns to the real partner");
+
+  const locked = await httpJson(serverA.port, "/api/command", {
+    method: "POST",
+    body: { name: "pet-display", args: "7-001" },
+  });
+  assert.equal(locked.status, 400);
+  assert.equal(locked.json.reason, "not-unlocked");
+
+  // 钉住 + 展示叠加时，取消钉住两个一起清
+  await httpJson(serverA.port, "/api/command", { method: "POST", body: { name: "pet-display", args: "1-001" } });
+  withRawDb(dbA, (db) => {
+    db.run("UPDATE vpet_control_state SET cheat_node_id = '1-001' WHERE control_id = 1");
+  });
+  const unpin = await httpJson(serverA.port, "/api/command", { method: "POST", body: { name: "pet-unpin" } });
+  assert.equal(unpin.status, 200);
+  assert.equal(unpin.json.state.pinned, null);
+  assert.equal(unpin.json.state.displaying, null);
+
+  } finally {
+    withRawDb(dbA, (db) => {
+      db.run("DELETE FROM partners WHERE partner_id = 'partner-display-test'");
+      db.run("UPDATE vpet_control_state SET cheat_node_id = NULL WHERE control_id = 1");
+      db.run("CREATE TABLE IF NOT EXISTS magpie_pet_display_state (control_id INTEGER PRIMARY KEY CHECK (control_id = 1), node_id TEXT)");
+      db.run("DELETE FROM magpie_pet_display_state");
+    });
+  }
+});
+
 await test("expedition commands validate kind, single active expedition and double claims", async () => {
   const badKind = await httpJson(serverA.port, "/api/command", {
     method: "POST",
