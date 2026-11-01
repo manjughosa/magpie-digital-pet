@@ -40,6 +40,7 @@
   },
   "magpie": {
     "icon": "page/icon.svg",
+    "middleware": "./lib/pet.middleware.mjs",
     "page": {
       "title": "Digital Pet",
       "file": "page/index.html",

@@ -43,9 +43,31 @@ magpie 网关 ──记账──> /v1/magpie/usage/requests
         侧边栏页面 <── 本地服务 127.0.0.1:3571（读同一库）
 ```
 
-不走中间件（magpie 的中间件沙箱无 IO），不解析响应体（magpie 已经替你把每个请求的 token 数好了，流式也准）。多个宿主进程同时跑 watcher 也安全：引擎按 route_id 去重，SQLite 走 WAL；页面服务固定端口，谁先绑谁服务，端口被短命宿主占着时后来者定期重试接管。
+真正的活儿不在中间件里跑：magpie 的中间件沙箱（moejs）没有 IO、没有定时器，读不了库也起不了服务。`package.json` 里声明了一个空的 `magpie.middleware`（`lib/pet.middleware.mjs`，`onRequest` 直接返回 `undefined`），只为让插件行挂上「中间件」标签 —— 它不改任何一个请求。多个宿主进程同时跑 watcher 也安全：引擎按 route_id 去重，SQLite 走 WAL；页面服务固定端口，谁先绑谁服务，端口被短命宿主占着时后来者定期重试接管。
 
 页面右上角的 `↻` 会立刻触发一轮拉取（带并发保护，不会和定时那轮叠），不用等下一个 20 秒。
+
+## 插件行上的标签：为什么会看到「供应商」
+
+插件行上的标签是 magpie 自己算的，不是插件声明的。规则是：能确定它是中间件、请求 hook、Agent、工具或纯页面时挂对应标签；都不是时兜底挂「供应商」（前端就是 `|| "pv"`）。
+
+本插件有一个 `main` 入口（watcher 和 3571 的页面服务都靠它启动），magpie 的几个判定因此都不成立：
+
+```go
+middlewareOnly = 有 magpie.middleware && 没有 main
+gatewayOnly    = 有 magpie.hooks    && 没有 main
+inMagpieOnly   = 有 agent           && 没有 main
+```
+
+三个都为假，兜底就落到「供应商」。**这不代表本插件注册了供应商**：
+
+- `plugin list --json` 里它没有 `provides`；
+- `plugin-providers.json` 里搜不到它；
+- 模型列表里没有它，它不参与路由、不参与计费、看不到任何请求体。
+
+同一个兜底也发生在别处：magpie 自带的 Chat 页面（`page-chat`）同样有 `main`，它的行上也是「页面 · 供应商」。
+
+要去掉这个标签只有两条路：删掉 `main`（watcher 和页面服务就都起不来了，插件等于停摆），或者改 magpie 那条兜底规则。两条都不做，所以它一直在 —— 它只是个灰标签，不干活。
 
 ## 玩法数值
 
