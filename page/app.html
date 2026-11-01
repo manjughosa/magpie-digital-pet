@@ -26,6 +26,17 @@
       <p class="gear-note muted small">只改进化经验槽的填充速度，统计里的 token 仍是真实用量。</p>
       <p class="gear-note small" id="difficulty-note"></p>
       <div class="gear-list" id="difficulty-list"></div>
+      <button type="button" class="gear-more" id="cheat-more" aria-expanded="false" aria-controls="cheat-panel">
+        <span>更多…</span><span class="muted small">作弊 / 全宠物获取</span>
+      </button>
+      <div class="gear-sub" id="cheat-panel" hidden>
+        <button type="button" class="gear-item" id="cheat-difficulty" data-command="pet-set-difficulty" data-args="0.01" data-confirm="1">
+          <b>作弊</b><span class="muted small">经验槽 ×0.01，是「极速」的 10 倍</span>
+        </button>
+        <button type="button" class="gear-item" id="cheat-grant-all" data-command="pet-grant-all" data-confirm="2">
+          <b>全宠物获取</b><span class="muted small">整图鉴 650 只入背包（不可逆）</span>
+        </button>
+      </div>
     </div>
   </div>
 </header>
@@ -263,7 +274,21 @@
   <div id="say" role="status" aria-live="polite"></div>
 </main>
 
-<footer class="muted small">
+<div class="gate" id="confirm-gate" role="dialog" aria-modal="true" aria-labelledby="gate-title" hidden>
+    <div class="gate-box">
+      <h3 id="gate-title">此举动不可逆</h3>
+      <p class="muted small" id="gate-note">
+        将会覆盖掉你的存档：图鉴 650 只全部入背包，进度类数据（喂食回执、成长史、
+        照顾/探险/成就/碎片/命名）清零，在役那只留在原位、进度回到起点。
+      </p>
+      <div class="gate-actions">
+        <button type="button" id="gate-cancel">取消</button>
+        <button type="button" class="gate-ok" id="gate-ok" data-command="pet-grant-all" disabled>5 秒后可确认</button>
+      </div>
+    </div>
+  </div>
+
+  <footer class="muted small">
   数据库与 CLI 同源；页面每 5 秒刷新。<br>
   原版引擎来自 @jcendal/opencode-digital-pet（Apache-2.0）。
 </footer>

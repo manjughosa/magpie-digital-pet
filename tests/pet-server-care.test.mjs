@@ -10,10 +10,10 @@
 
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
-import { rmSync } from "node:fs";
+import { readdirSync, rmSync } from "node:fs";
 import { request as httpRequest } from "node:http";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Database } from "bun:sqlite";
 
@@ -795,6 +795,123 @@ await test("close() is idempotent and refuses new connections afterwards", async
   }
   assert.equal(refused, true);
 });
+
+// ------------------------------------- 三级菜单：作弊档 / 全宠物获取 --
+// 一个自己的库 + 一只刚孵出来的伙伴，别碰上面几组的状态。
+const dbC = freshDbPath();
+const adapterC = createPetAdapter({ databasePath: dbC, notifyGate: () => false });
+await adapterC.runCommand("digital-pet-spawn");
+const serverC = createPetServer({ adapter: adapterC, port: 0, notifyGate: () => false });
+assert.equal(await serverC.start(), true);
+authToken = serverC.apiToken;
+
+await test("cheat gear 0.01 is settable, reported as 作弊, and the menu keeps six gears", async () => {
+  const before = await httpJson(serverC.port, "/api/state");
+  assert.equal(before.json.difficulty.levels.length, 6, "二级菜单只列六档");
+  assert.equal(before.json.difficulty.cheat.value, "0.01");
+
+  const set = await httpJson(serverC.port, "/api/command", {
+    method: "POST",
+    body: { name: "pet-set-difficulty", args: "0.01" },
+  });
+  assert.equal(set.status, 200);
+  assert.equal(set.json.state.difficulty.value, "0.01");
+  assert.equal(set.json.state.difficulty.label, "作弊", "不能被当成「普通」");
+
+  // 档位表外的值照旧拒绝
+  const bogus = await httpJson(serverC.port, "/api/command", {
+    method: "POST",
+    body: { name: "pet-set-difficulty", args: "0.05" },
+  });
+  assert.equal(bogus.status, 400);
+  assert.equal(bogus.json.reason, "invalid-args");
+});
+
+await test("×0.01 fills 100 gauge per token while the receipt keeps the true count", async () => {
+  const before = (await httpJson(serverC.port, "/api/state")).json.partner.gauge;
+  const id = `cheat-scale-${randomUUID()}`;
+  const fed = await adapterC.feedUsage({ id, tokens: { input: 1 }, completedAt: Date.now() });
+  assert.equal(fed.kind, "fed");
+  assert.equal(fed.tokenDelta, 1, "回执只报真实用量");
+  const after = (await httpJson(serverC.port, "/api/state")).json.partner.gauge;
+  assert.equal(after - before, 100, "1 token 记 100 点经验");
+  const stored = await withRawDb(dbC, (db) =>
+    db.query("SELECT token_delta FROM usage_receipts WHERE receipt_key = ?").get(`message:${id}`),
+  );
+  assert.equal(stored.token_delta, 1, "库里存的也是真数，不是放大后的");
+});
+
+await test("grant-all hands out a one-shot ticket and touches nothing before it comes back", async () => {
+  const countRows = () => withRawDb(dbC, (db) => db.query("SELECT COUNT(*) AS c FROM partners").get().c);
+  const before = await countRows();
+  const armed = await httpJson(serverC.port, "/api/command", {
+    method: "POST",
+    body: { name: "pet-grant-all" },
+  });
+  assert.equal(armed.status, 200);
+  assert.ok(armed.json.confirm?.token, "第一段只发票");
+  assert.equal(await countRows(), before, "票没回来之前不许动库");
+
+  const bogus = await httpJson(serverC.port, "/api/command", {
+    method: "POST",
+    body: { name: "pet-grant-all", args: "not-a-ticket" },
+  });
+  assert.equal(bogus.status, 400);
+  assert.equal(bogus.json.reason, "confirm-expired");
+
+  const done = await httpJson(serverC.port, "/api/command", {
+    method: "POST",
+    body: { name: "pet-grant-all", args: armed.json.confirm.token },
+  });
+  assert.equal(done.status, 200);
+
+  // 一次性：同一个票再来一次就被拒
+  const again = await httpJson(serverC.port, "/api/command", {
+    method: "POST",
+    body: { name: "pet-grant-all", args: armed.json.confirm.token },
+  });
+  assert.equal(again.status, 400);
+  assert.equal(again.json.reason, "confirm-expired");
+});
+
+await test("grant-all rebuilds the live save: 650 forms owned, one in service, progress cleared", async () => {
+  const state = (await httpJson(serverC.port, "/api/state")).json;
+  assert.equal(state.partners.length, 650, "整图鉴都进屋了");
+  assert.equal(state.dex.filter((d) => d.unlocked).length, 650, "图鉴全解锁");
+  assert.equal(state.dex.filter((d) => d.owned > 0).length, 650, "每只都算背包里的一件");
+  assert.equal(state.partner.gauge, 0, "在役那只的进度回到起点");
+
+  const rows = await withRawDb(dbC, (db) => ({
+    active: db.query("SELECT COUNT(*) AS c FROM partners WHERE retired_at IS NULL").get().c,
+    generations: db.query("SELECT COUNT(DISTINCT generation) AS c FROM partners").get().c,
+    receipts: db.query("SELECT COUNT(*) AS c FROM usage_receipts").get().c,
+    achievements: db.query("SELECT COUNT(*) AS c FROM magpie_pet_achievements").get().c,
+    fragments: db.query("SELECT quantity FROM magpie_pet_inventory WHERE item_id = 'fragments'").get()?.quantity ?? 0,
+  }));
+  assert.equal(rows.active, 1, "在役位最多一个（引擎有触发器）");
+  assert.equal(rows.generations, 650, "代次必须唯一（引擎有唯一索引）");
+  assert.equal(rows.receipts, 0, "回执清零");
+  assert.equal(rows.achievements, 0, "成就清零");
+  assert.equal(rows.fragments, 0, "碎片清零");
+
+  const backup = readdirSync(dirname(dbC)).find((f) => f.startsWith(`${basename(dbC)}.old-`));
+  assert.ok(backup, "原档必须备份成 <存档>.old-<时间戳>");
+  const keptRows = await withRawDb(join(dirname(dbC), backup), (db) =>
+    db.query("SELECT COUNT(*) AS c FROM partners").get().c,
+  );
+  assert.equal(keptRows, 1, "备份里是动手之前那一份");
+});
+
+await test("the rebuilt save still feeds: gauge grows and the receipt keeps the true tokens", async () => {
+  const before = (await httpJson(serverC.port, "/api/state")).json.partner.gauge;
+  const id = `after-rebuild-${randomUUID()}`;
+  const fed = await adapterC.feedUsage({ id, tokens: { input: 1 }, completedAt: Date.now() });
+  assert.equal(fed.kind, "fed", "重建之后引擎照样认这只在役的");
+  const after = (await httpJson(serverC.port, "/api/state")).json.partner.gauge;
+  assert.equal(after - before, 100, "×0.01 还在生效：1 token 记 100 点");
+});
+
+await serverC.close();
 
 if (failures > 0) {
   console.error(`\n${failures} test(s) failed`);

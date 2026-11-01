@@ -65,6 +65,10 @@ test("every gameplay button is a data-command button; archive tabs are separate"
     if (/\bclass="[^"]*tab-btn/.test(btn)) continue;
     // 右上角养成难度齿轮：只是开菜单，本身不发命令（选项按钮由 app.js 生成）
     if (/\bid="difficulty-gear"/.test(btn)) continue;
+    // 三级菜单那个「更多…」：也只开合子菜单，不发命令
+    if (/\bid="cheat-more"/.test(btn)) continue;
+    // 不可逆确认框的「取消」：只关框（真正执行的是带 data-command 的那个确认键）
+    if (/\bid="gate-cancel"/.test(btn)) continue;
     assert.ok(/\bdata-command="[^"]+"/.test(btn), `button missing data-command: ${btn}`);
   }
   const tabs = [...html.matchAll(/data-tab="([^"]+)"/g)].map((m) => m[1]);
@@ -149,6 +153,9 @@ test("dex selection, rename controls and action effects are wired", () => {
   assert.ok(js.includes("ACTION_EFFECTS"), "per-action canvas effects missing");
   assert.ok(js.includes("paintDex"), "dex painter missing");
   assert.ok(js.includes("pet-rename"), "rename command wiring missing");
+  // 「查看已解锁」= 所有能看的；只留"曾持有"那半，全宠物获取之后这一栏就空了
+  assert.ok(js.includes('filter === "visited" && !item.viewable'), "查看已解锁 = 背包里的 + 曾持有的");
+  assert.ok(js.includes("图鉴里的每一只都已经在你背包里了。"), "只看未拥有为空时要说明原因");
 });
 
 test("destructive spawn requires a second click and dex switch warns about pinning", () => {
@@ -208,6 +215,49 @@ test("renderScene draws from a local frame set, never bare window.frames", () =>
     "pickFrameNames must receive the local frame set");
   assert.ok(scene.includes(`drawContent(${local[1]}[`),
     "drawContent must draw from the same local frame set");
+});
+
+test("全宠物获取需要三下确认：问一句 → 不可逆确认框 → 5 秒倒计时后才能按", () => {
+  for (const id of [
+    "cheat-more",
+    "cheat-panel",
+    "cheat-difficulty",
+    "cheat-grant-all",
+    "confirm-gate",
+    "gate-cancel",
+    "gate-ok",
+  ]) {
+    assert.ok(html.includes(`id="${id}"`), `missing #${id}`);
+  }
+  // 作弊挂在难度命令上，两下；全宠物获取三下
+  assert.ok(
+    html.includes('data-command="pet-set-difficulty" data-args="0.01" data-confirm="1"'),
+    "作弊档要走上难度命令并带二次确认",
+  );
+  assert.ok(html.includes('data-command="pet-grant-all" data-confirm="2"'), "全宠物获取要带三级确认");
+  assert.ok(
+    html.includes('id="gate-ok" data-command="pet-grant-all"'),
+    "确认框里的确认键才是真正发命令的那个",
+  );
+  assert.ok(html.includes("此举动不可逆"), "确认框要写清不可逆");
+  assert.ok(html.includes("5 秒后可确认"), "确认键要先等 5 秒倒计时");
+  assert.ok(js.includes("是否选择获取全部宠物"), "第一下只问一句，不动库");
+  assert.ok(js.includes("gateSync"), "倒计时与令牌都到位才解锁确认键");
+  assert.ok(js.includes("j?.confirm?.token"), "确认键用的是后台发的一次性票");
+  assert.ok(/gateTimer = null;\s*gateSync\(\);/.test(js), "倒计时走完只解锁按键，绝不自动执行");
+  assert.ok(
+    /const j = await command\("pet-grant-all"\)[\s\S]{0,300}gateSync\(\)/.test(js),
+    "command() 的 finally 会把按钮恢复可点，拿票回来必须再按住确认键",
+  );
+  assert.ok(js.includes("if (armedConfirm) disarmConfirm();"), "点了别的按钮，待确认作废");
+  assert.match(js, /if \(!pop\.hidden\) \{\s*closeGear\(\)/, "关菜单要作废待确认");
+});
+
+test("养成难度的标签认作弊档，不会兜底成「普通」", () => {
+  // 顶栏/常驻提示原来只用二级菜单那六档解析，选了作弊档就写成「养成难度 普通 ×0.01」
+  assert.ok(js.includes("String(value) === cheatValue ? cheat : null"), "档位名要认得三级菜单的作弊档");
+  assert.ok(js.includes("levelOf(current)?.label"), "顶栏与提示用的是解析后的档位名");
+  assert.ok(html.includes("养成难度选择"), "齿轮标题还在");
 });
 
 if (failures > 0) {

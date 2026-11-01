@@ -8,7 +8,15 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Database } from "bun:sqlite";
 
-import { createCareStore, DECORATIONS, DAILY_GOAL_REWARDS, DAILY_FRAGMENT_CAP } from "../lib/pet.care-store.mjs";
+import {
+  createCareStore,
+  DECORATIONS,
+  DAILY_GOAL_REWARDS,
+  DAILY_FRAGMENT_CAP,
+  DIFFICULTY_LEVELS,
+  DIFFICULTY_CHEAT,
+  DIFFICULTY_KNOWN,
+} from "../lib/pet.care-store.mjs";
 import { EXPEDITIONS } from "../lib/pet.care-rules.mjs";
 
 let failures = 0;
@@ -366,6 +374,21 @@ test("daily goal rewards are granted once per day", () => {
   store.getCareSnapshot("p1", t0 + 12 * MINUTE);
   store.getCareSnapshot("p1", t0 + 13 * MINUTE);
   assert.equal(store.getCollection().fragments, expected);
+  store.close();
+});
+
+// 三级菜单的「作弊」档：×0.01，填充速度是「极速」的 10 倍。它能被设置、能被
+// 适配器认出来，但**不**进二级菜单的六档。
+test("cheat gear is a known level, kept out of the six-gear menu", () => {
+  assert.equal(DIFFICULTY_LEVELS.length, 6, "二级菜单只列六档");
+  assert.ok(!DIFFICULTY_LEVELS.some((l) => l.value === "0.01"), "作弊档不进二级菜单");
+  assert.equal(DIFFICULTY_CHEAT.value, "0.01");
+  assert.equal(DIFFICULTY_CHEAT.label, "作弊");
+  assert.ok(DIFFICULTY_KNOWN.some((l) => l.value === "0.01"), "适配器与 set 命令都必须认它");
+  assert.equal(1 / Number(DIFFICULTY_CHEAT.value), 10 / Number(DIFFICULTY_LEVELS[0].value));
+  const store = createCareStore({ databasePath: freshDbPath() });
+  store.setSetting("difficulty", DIFFICULTY_CHEAT.value);
+  assert.equal(store.getSetting("difficulty", "1"), "0.01");
   store.close();
 });
 

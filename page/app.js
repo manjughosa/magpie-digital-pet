@@ -871,7 +871,9 @@ function paintDex(s) {
   const filter = $("dex-filter")?.value || "unlocked";
   const items = (s.ok && Array.isArray(s.dex) ? s.dex : []).filter((item) => {
     if (filter === "unlocked" && !item.unlocked) return false;
-    if (filter === "visited" && (!item.viewable || item.unlocked)) return false;
+    // 「查看已解锁」= 所有能点开看的：背包里的 + 曾持有不占背包的。
+    // 不能只留"曾持有"那一半 —— 全宠物获取之后背包里全有，那一栏就空了。
+    if (filter === "visited" && !item.viewable) return false;
     if (filter === "locked" && item.viewable) return false;
     if (!query) return true;
     return [item.id, item.nameEn, item.nameJp].some((v) => String(v || "").toLowerCase().includes(query));
@@ -896,7 +898,13 @@ function paintDex(s) {
   if (!items.length) {
     const empty = document.createElement("div");
     empty.className = "empty";
-    empty.textContent = "没有匹配的图鉴。";
+    // 空的时候说清为什么空，别让人以为坏了
+    empty.textContent =
+      filter === "locked"
+        ? "图鉴里的每一只都已经在你背包里了。"
+        : filter === "visited"
+          ? "还没有能看的形态 —— 先养一只，或在「全部图鉴」里翻翻。"
+          : "没有匹配的图鉴。";
     grid.append(empty);
     return;
   }
@@ -1033,6 +1041,7 @@ function closeGear() {
   const btn = $("difficulty-gear");
   if (pop) pop.hidden = true;
   if (btn) btn.setAttribute("aria-expanded", "false");
+  disarmConfirm();
 }
 
 function paintDifficulty(s) {
@@ -1042,6 +1051,19 @@ function paintDifficulty(s) {
   const levels = Array.isArray(s?.difficulty?.levels) && s.difficulty.levels.length
     ? s.difficulty.levels
     : [{ value: "1", label: "普通" }];
+  // 三级菜单里的「作弊」不在二级列表里：选中它时把那一项点亮，否则看起来像
+  // 「一档都没选中」；标签解析也得认它，不然顶栏会写成「养成难度 普通 ×0.01」
+  const cheat = s?.difficulty?.cheat && typeof s.difficulty.cheat === "object"
+    ? s.difficulty.cheat
+    : { value: "0.01", label: "作弊" };
+  const cheatValue = String(cheat.value);
+  const levelOf = (value) =>
+    levels.find((l) => l.value === String(value)) ?? (String(value) === cheatValue ? cheat : null);
+  const cheatItem = $("cheat-difficulty");
+  if (cheatItem) {
+    cheatItem.classList.toggle("is-on", current === cheatValue);
+    cheatItem.setAttribute("aria-pressed", String(current === cheatValue));
+  }
   const sig = `${current}|${levels.map((l) => l.value).join(",")}`;
   if (sig === difficultySig) return;
   difficultySig = sig;
@@ -1064,7 +1086,7 @@ function paintDifficulty(s) {
     box.append(btn);
   }
   const gear = $("difficulty-gear");
-  const label = levels.find((l) => l.value === current)?.label ?? "普通";
+  const label = levelOf(current)?.label ?? "普通";
   if (gear) gear.title = `养成难度选择 · 当前：${label}`;
   const mult = Number(current);
   const rateText =
@@ -1245,9 +1267,12 @@ if (gearBtnEl) {
     e.stopPropagation();
     const pop = $("difficulty-pop");
     if (!pop) return;
-    const open = pop.hidden;
-    pop.hidden = !open;
-    gearBtnEl.setAttribute("aria-expanded", String(open));
+    if (!pop.hidden) {
+      closeGear(); // 关菜单顺带把待确认作废，免得下次进来还是「再点一次」
+      return;
+    }
+    pop.hidden = false;
+    gearBtnEl.setAttribute("aria-expanded", "true");
   });
   document.addEventListener("click", (e) => {
     const pop = $("difficulty-pop");
@@ -1258,6 +1283,98 @@ if (gearBtnEl) {
     if (e.key === "Escape") closeGear();
   });
 }
+
+// 三级菜单：难度齿轮里的「更多…」，点开才露出「作弊」和「全宠物获取」
+const cheatMoreEl = $("cheat-more");
+if (cheatMoreEl) {
+  cheatMoreEl.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const panel = $("cheat-panel");
+    if (!panel) return;
+    const open = panel.hidden;
+    panel.hidden = !open;
+    cheatMoreEl.setAttribute("aria-expanded", String(open));
+  });
+}
+
+// 二级/三级确认。作弊是两下（点一下问一句，再点一下才切）；全宠物获取是三下：
+// 1) 点一下问「是否选择获取全部宠物」→ 2) 再点一下弹出不可逆确认框，框里的确认
+// 键先压 5 秒倒计时，同时向好后台换一张一次性确认票 → 3) 倒计时走完、票到手才按
+// 得下去。没有「倒计时结束自动执行」这回事；关菜单、点取消、点别的按钮都作废。
+let armedConfirm = null;
+function disarmConfirm() {
+  if (!armedConfirm) return;
+  const { btn } = armedConfirm;
+  armedConfirm = null;
+  const note = btn?.querySelector(".muted");
+  if (note && btn?.dataset.note) note.textContent = btn.dataset.note;
+}
+function armConfirm(btn, step, text) {
+  armedConfirm = { btn, step };
+  const note = btn.querySelector(".muted");
+  if (note) note.textContent = text;
+}
+
+let gateReady = false;
+let gateTimer = null;
+function gateReset() {
+  clearInterval(gateTimer);
+  gateTimer = null;
+  gateReady = false;
+  const ok = $("gate-ok");
+  if (ok) {
+    ok.disabled = true;
+    ok.textContent = "5 秒后可确认";
+    delete ok.dataset.args;
+  }
+  const gate = $("confirm-gate");
+  if (gate) gate.hidden = true;
+}
+function gateSync() {
+  const ok = $("gate-ok");
+  if (!ok) return;
+  // 倒计时没走完、或者票还没到手 → 确认键必须按不动
+  const ready = Boolean(gateReady && ok.dataset.args && !gateTimer);
+  ok.disabled = !ready;
+  if (ready) ok.textContent = "确认全宠物获取";
+}
+async function openGate() {
+  const gate = $("confirm-gate");
+  const ok = $("gate-ok");
+  if (!gate || !ok) return;
+  gate.hidden = false;
+  gateReady = false;
+  ok.textContent = "5 秒后可确认";
+  delete ok.dataset.args;
+  let left = 5;
+  clearInterval(gateTimer);
+  gateTimer = setInterval(() => {
+    left -= 1;
+    if (left > 0) {
+      ok.textContent = `${left} 秒后可确认`;
+      return;
+    }
+    clearInterval(gateTimer);
+    gateTimer = null;
+    gateSync();
+  }, 1000);
+  gateSync();
+  // 一次性确认票：拿不到就不解锁确认键（只有票对得上，服务端才真动库）
+  const j = await command("pet-grant-all");
+  if (j?.confirm?.token) {
+    ok.dataset.args = j.confirm.token;
+    gateReady = true;
+  } else if (!gateTimer) {
+    ok.textContent = "没拿到确认票，请重试";
+  }
+  // command() 的 finally 会把所有命令按钮恢复可点，这里再按住一次
+  gateSync();
+}
+$("gate-cancel")?.addEventListener("click", () => {
+  gateReset();
+  disarmConfirm();
+  say("已取消，存档没动。");
+});
 
 const commandButtons = () => document.querySelectorAll("[data-command]");
 
@@ -1282,7 +1399,7 @@ async function command(name, args) {
     const j = await r.json().catch(() => null);
     if (!r.ok) {
       say(j?.error || `操作失败（HTTP ${r.status}）`);
-      return;
+      return j;
     }
     const toast = (j?.toasts || [])
       .map((t) => [t.title, t.message].filter(Boolean).join(" — "))
@@ -1296,6 +1413,7 @@ async function command(name, args) {
       actionEffect = { kind: name, style: ACTION_EFFECTS[name], startedAt: Date.now() };
     }
     if (j?.state) paint(j.state);
+    return j;
   } catch (e) {
     say(e?.name === "AbortError" ? "命令超时：宠物服务没响应，请稍后再试。" : `命令失败：${e?.message ?? e}`);
   } finally {
@@ -1314,8 +1432,38 @@ document.querySelectorAll("[data-command]").forEach((btn) => {
     btn.dataset.command === "pet-decoration-equip"
       ? btn.textContent.split(" · ")[0]
       : btn.textContent;
+  // 三级菜单那两项的说明文字会被「待确认 / 已在确认框」临时改写，留一份原文案
+  const sub = btn.querySelector(".muted");
+  if (sub) btn.dataset.note = sub.textContent;
   btn.addEventListener("click", () => {
     const name = btn.dataset.command;
+    // 确认框里的最终确认键：票由 openGate 填进 data-args，按了才真的执行
+    if (btn.id === "gate-ok") {
+      (async () => {
+        await command(name, btn.dataset.args);
+        gateReset();
+      })();
+      return;
+    }
+    // 带确认门槛的两项（data-confirm="1" 两下，="2" 三下）
+    if (btn.dataset.confirm === "1" || btn.dataset.confirm === "2") {
+      const twoStep = btn.dataset.confirm === "1";
+      if (armedConfirm?.btn === btn && armedConfirm.step === 1) {
+        if (twoStep) {
+          disarmConfirm();
+          command(name, btn.dataset.args);
+          return;
+        }
+        armConfirm(btn, 2, "已在确认框里等你确认");
+        openGate();
+        return;
+      }
+      if (armedConfirm?.btn === btn) return; // 确认框已经开着：再点不重复触发
+      disarmConfirm();
+      armConfirm(btn, 1, twoStep ? "再点一次：切成作弊 ×0.01" : "是否选择获取全部宠物？再点一下继续");
+      say(twoStep ? "再点一次就切成作弊档（经验槽 ×0.01）。" : "是否选择获取全部宠物？再点一下才会看到后果。");
+      return;
+    }
     // 动作展示：纯本地演示，不查冷却、不改数值、不进对决
     if (btn.dataset.preview === "1") {
       override = { name, names: ACTION_FRAMES[name] ?? ["walk_1"], until: Date.now() + 2400 };
@@ -1343,6 +1491,8 @@ document.querySelectorAll("[data-command]").forEach((btn) => {
       const spawnButton = document.querySelector('[data-command="digital-pet-spawn"]');
       if (spawnButton?.dataset.label) spawnButton.textContent = spawnButton.dataset.label;
     }
+    // 三级菜单的待确认同理：点别的按钮就作废
+    if (armedConfirm) disarmConfirm();
     if (name === "pet-poll-now") {
       // 转一圈表示正在拉，比只改按钮文字直观
       btn.classList.add("spinning");
