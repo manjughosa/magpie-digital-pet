@@ -38,7 +38,7 @@ test("app.html contains no inline script logic", () => {
 });
 
 test("app.html exposes the required DOM regions", () => {
-  for (const id of ["habitat", "pet-canvas", "care-bars", "actions", "daily-goals", "collection", "events", "gens"]) {
+  for (const id of ["habitat", "pet-canvas", "care-bars", "actions", "daily-goals", "panel-collection", "events", "gens"]) {
     assert.ok(html.includes(`id="${id}"`), `missing #${id}`);
   }
   assert.match(html, /<canvas[^>]*id="pet-canvas"/, "#pet-canvas must be a <canvas>");
@@ -63,10 +63,12 @@ test("every gameplay button is a data-command button; archive tabs are separate"
   assert.ok(buttons.length >= 10, "expected a full set of buttons");
   for (const btn of buttons) {
     if (/\bclass="[^"]*tab-btn/.test(btn)) continue;
+    // 右上角养成难度齿轮：只是开菜单，本身不发命令（选项按钮由 app.js 生成）
+    if (/\bid="difficulty-gear"/.test(btn)) continue;
     assert.ok(/\bdata-command="[^"]+"/.test(btn), `button missing data-command: ${btn}`);
   }
   const tabs = [...html.matchAll(/data-tab="([^"]+)"/g)].map((m) => m[1]);
-  assert.deepEqual(tabs, ["dex", "events", "gens"]);
+  assert.deepEqual(tabs, ["dex", "events", "gens", "collection", "actions"]);
 });
 
 test("all pet-* and digital-pet-* commands have buttons", () => {
@@ -153,8 +155,10 @@ test("destructive spawn requires a second click and dex switch warns about pinni
   assert.ok(js.includes("spawnArmed"), "spawn double-confirm state missing");
   assert.ok(js.includes("再点一次确认获取新的蛋"), "spawn confirmation copy missing");
   assert.ok(!js.includes("4 秒内"), "spawn confirm must not use a timeout anymore");
-  assert.ok(js.includes("孵蛋条件计数器没变化"), "spawn gate must be the egg counter");
+  assert.ok(js.includes("当前伙伴达到 baby II（含以上阶段）后才能获取新的蛋"), "spawn gate copy");
   assert.ok(js.includes("spawnBtn.disabled = !ready"), "spawn gate must be the egg counter only");
+  assert.ok(html.includes('data-preview="1"'), "actions tab must be a local preview");
+  assert.ok(js.includes('btn.dataset.preview === "1"'), "preview buttons must not send commands");
   assert.ok(html.includes('id="battle-me"'), "battle bar must name the pet that is about to evolve");
   assert.ok(js.includes('$("battle-me").textContent'), "battle bar must fill that name from state");
   for (const tone of ["vaccine", "data", "virus"]) {

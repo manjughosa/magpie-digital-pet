@@ -118,6 +118,42 @@ main {
 }
 h1 { font-size: 16px; margin: 0; }
 .topbar p { margin: 0; }
+.gear-wrap { margin-left: auto; position: relative; align-self: center; }
+.gear-btn {
+  display: grid; place-items: center;
+  width: 32px; height: 32px; padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: inherit; cursor: pointer;
+  transition: transform .35s ease, background .2s ease;
+}
+.gear-btn:hover { background: var(--bar-track); transform: rotate(45deg); }
+.gear-btn[aria-expanded="true"] { transform: rotate(45deg); background: var(--bar-track); }
+.gear-btn svg { width: 18px; height: 18px; }
+.gear-pop {
+  position: absolute; right: 0; top: calc(100% + 8px); z-index: 30;
+  width: 268px; padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  box-shadow: 0 14px 34px rgb(0 0 0 / 45%);
+}
+.gear-title { margin: 0 0 4px; font-size: 13px; font-weight: 600; }
+.gear-note { margin: 0 0 10px; line-height: 1.5; }
+.gear-list { display: grid; gap: 6px; }
+.gear-item {
+  display: flex; align-items: baseline; gap: 8px;
+  padding: 7px 9px; text-align: left;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: inherit; cursor: pointer; font: inherit;
+}
+.gear-item:hover { background: var(--bar-track); }
+.gear-item.is-on { border-color: var(--accent); background: var(--bar-track); }
+.gear-item b { font-size: 13px; }
+.gear-item span { margin-left: auto; }
 h2 {
   display: flex;
   align-items: center;
@@ -614,6 +650,14 @@ footer {
   margin-bottom: 10px;
 }
 .dex-tools input { flex: 1 1 180px; }
+/* 动作展示：两列按钮，点一下演示对应动作 */
+.action-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 6px;
+}
+.action-grid button { width: 100%; padding: 8px 10px; font-size: 12.5px; }
+
 .dex-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
@@ -660,7 +704,7 @@ footer {
 /* ---------------- 档案 tabs ---------------- */
 .tab-bar {
   display: flex;
-  gap: 4px;
+  gap: 2px;
   flex-wrap: wrap;
   margin: -14px -16px 12px;
   padding: 0 10px;
@@ -674,7 +718,10 @@ footer {
   border-radius: 0;
   background: transparent;
   color: var(--muted);
-  padding: 10px 12px 9px;
+  /* 四个 tab 在右侧栏里排一行：左右内边距收窄一点 */
+  padding: 10px 6px 9px;
+  font-size: 12.5px;
+  white-space: nowrap;
   box-shadow: none;
 }
 .tab-btn:hover { color: var(--fg); }

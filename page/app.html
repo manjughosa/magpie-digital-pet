@@ -12,6 +12,22 @@
 <header class="topbar">
   <h1>宠物</h1>
   <p class="muted small" id="sub">烧 token，养电子宠物</p>
+  <div class="gear-wrap">
+    <button type="button" class="gear-btn" id="difficulty-gear" aria-haspopup="true" aria-expanded="false"
+      title="养成难度选择" aria-label="养成难度选择">
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7"
+        stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3.2"/>
+        <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1.11-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 1.55-1.11 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H9a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V9a1.7 1.7 0 0 0 1.55 1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1Z"/>
+      </svg>
+    </button>
+    <div class="gear-pop" id="difficulty-pop" hidden>
+      <p class="gear-title">养成难度选择</p>
+      <p class="gear-note muted small">只改进化经验槽的填充速度，统计里的 token 仍是真实用量。</p>
+      <p class="gear-note small" id="difficulty-note"></p>
+      <div class="gear-list" id="difficulty-list"></div>
+    </div>
+  </div>
 </header>
 
 <main>
@@ -44,6 +60,7 @@
           <span class="muted" id="evo-pct"></span>
         </div>
         <div class="muted small" id="display-note" hidden></div>
+        <div class="muted small" id="difficulty-hint" hidden></div>
       </div>
       <div class="battle" id="battle" hidden>
         <div class="trial-head">
@@ -134,27 +151,6 @@
         <p class="small muted hint" id="actions-hint"></p>
       </section>
 
-      <section id="collection" aria-label="收藏与装饰">
-        <h2>收藏与装饰</h2>
-        <p class="small">数据碎片：<b id="fragments">0</b> <span class="muted" id="fragment-today"></span> · <span class="muted" id="achievements"></span></p>
-        <div class="deco-grid">
-          <button type="button" data-command="pet-decoration-equip" data-args="village">阳光村落 · 0 碎片</button>
-          <button type="button" data-command="pet-decoration-equip" data-args="meadow">初始原野 · 20 碎片</button>
-          <button type="button" data-command="pet-decoration-equip" data-args="night">月见之丘 · 50 碎片</button>
-          <button type="button" data-command="pet-decoration-equip" data-args="gear">齿轮草原 · 75 碎片</button>
-          <button type="button" data-command="pet-decoration-equip" data-args="terminal">数据神殿 · 80 碎片</button>
-          <button type="button" data-command="pet-decoration-equip" data-args="ocean">网络之海 · 120 碎片</button>
-          <button type="button" data-command="pet-decoration-equip" data-args="coast">黄昏海岸 · 140 碎片</button>
-          <button type="button" data-command="pet-decoration-equip" data-args="sunset">失落遗迹 · 160 碎片</button>
-          <button type="button" data-command="pet-decoration-equip" data-args="snow">永冬雪原 · 240 碎片</button>
-          <button type="button" data-command="pet-decoration-equip" data-args="forest">幽暗密林 · 280 碎片</button>
-          <button type="button" data-command="pet-decoration-equip" data-args="tunnel">悬浮隧道 · 300 碎片</button>
-          <button type="button" data-command="pet-decoration-equip" data-args="sakura">樱之神社 · 320 碎片</button>
-          <button type="button" data-command="pet-decoration-equip" data-args="factory">废弃工厂 · 360 碎片</button>
-          <button type="button" data-command="pet-decoration-equip" data-args="void">星海尽头 · 400 碎片</button>
-          <button type="button" data-command="pet-decoration-equip" data-args="castle">丑皇暗堡 · 520 碎片</button>
-        </div>
-      </section>
 
       <section id="manage" aria-label="管理">
         <h2>管理</h2>
@@ -198,6 +194,8 @@
       <button type="button" class="tab-btn active" role="tab" aria-selected="true" aria-controls="panel-dex" data-tab="dex">图鉴与切换</button>
       <button type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-events" data-tab="events">喂食记录</button>
       <button type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-gens" data-tab="gens">历代搭档</button>
+      <button type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-collection" data-tab="collection">场景</button>
+      <button type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-actions" data-tab="actions">动作展示</button>
     </div>
     <div class="archive-panels">
       <section class="tab-panel" id="panel-dex" role="tabpanel" aria-label="图鉴与切换">
@@ -219,6 +217,40 @@
       <section class="tab-panel" id="panel-events" role="tabpanel" hidden aria-label="喂食记录">
         <h2>喂食记录</h2>
         <ul id="events"><li class="empty">读取中…</li></ul>
+      </section>
+      <section class="tab-panel" id="panel-collection" role="tabpanel" hidden aria-label="收藏与装饰">
+        <h2>场景</h2>
+        <p class="small">数据碎片：<b id="fragments">0</b> <span class="muted" id="fragment-today"></span> · <span class="muted" id="achievements"></span></p>
+        <div class="deco-grid">
+          <button type="button" data-command="pet-decoration-equip" data-args="village">阳光村落 · 0 碎片</button>
+          <button type="button" data-command="pet-decoration-equip" data-args="meadow">初始原野 · 20 碎片</button>
+          <button type="button" data-command="pet-decoration-equip" data-args="night">月见之丘 · 50 碎片</button>
+          <button type="button" data-command="pet-decoration-equip" data-args="gear">齿轮草原 · 75 碎片</button>
+          <button type="button" data-command="pet-decoration-equip" data-args="terminal">数据神殿 · 80 碎片</button>
+          <button type="button" data-command="pet-decoration-equip" data-args="ocean">网络之海 · 120 碎片</button>
+          <button type="button" data-command="pet-decoration-equip" data-args="coast">黄昏海岸 · 140 碎片</button>
+          <button type="button" data-command="pet-decoration-equip" data-args="sunset">失落遗迹 · 160 碎片</button>
+          <button type="button" data-command="pet-decoration-equip" data-args="snow">永冬雪原 · 240 碎片</button>
+          <button type="button" data-command="pet-decoration-equip" data-args="forest">幽暗密林 · 280 碎片</button>
+          <button type="button" data-command="pet-decoration-equip" data-args="tunnel">悬浮隧道 · 300 碎片</button>
+          <button type="button" data-command="pet-decoration-equip" data-args="sakura">樱之神社 · 320 碎片</button>
+          <button type="button" data-command="pet-decoration-equip" data-args="factory">废弃工厂 · 360 碎片</button>
+          <button type="button" data-command="pet-decoration-equip" data-args="void">星海尽头 · 400 碎片</button>
+          <button type="button" data-command="pet-decoration-equip" data-args="castle">丑皇暗堡 · 520 碎片</button>
+        </div>
+      </section>
+      <section class="tab-panel" id="panel-actions" role="tabpanel" hidden aria-label="动作展示">
+        <h2>动作展示</h2>
+        <p class="small muted">这些动作本地都有对应的像素帧，点一下立刻演示；鼠标停上去能看到它什么时候会自己发生。</p>
+        <div class="action-grid">
+          <button type="button" data-command="pet-feed-snack" data-preview="1" data-cooldown="snack" data-tip="喂一块点心：饱食 +10、心情 +2，冷却 10 分钟。不会自动触发；饱食低于 25 时平时会自动改显示「生气 / 拒绝」帧。">吃点心</button>
+          <button type="button" data-command="pet-play" data-preview="1" data-cooldown="play" data-tip="玩耍：心情 +12、亲密 +2、精力 −10，冷却 8 分钟，需要精力 ≥ 20。平时心情 ≥ 75 会自动显示开心帧。">玩耍</button>
+          <button type="button" data-command="pet-clean" data-preview="1" data-cooldown="clean" data-tip="清洁：清洁度直接回 100，冷却 10 分钟；清洁低于 50 时额外 +1 亲密。清洁低于 25 时平时会自动显示受伤帧。">清洁</button>
+          <button type="button" data-command="pet-rest" data-preview="1" data-cooldown="rest" data-tip="休息：精力 +25、饱食 −2，冷却 15 分钟。精力低于 25 时平时会自动切到睡觉帧。">休息</button>
+          <button type="button" data-command="pet-pet-egg" data-preview="1" data-tip="摸蛋：亲密 +2，冷却 5 分钟，只在蛋阶段可用；孵出来之后这个按钮会失效。">摸蛋</button>
+          <button type="button" data-command="pet-pet" data-preview="1" data-cooldown="pet" data-tip="抚摸：亲密 +2、心情 +1，冷却 3 分钟。在画布上按住来回划也会自动触发同一个动作。">抚摸</button>
+          <button type="button" data-command="pet-battle" data-preview="1" data-tip="相克试炼：只有在「待战」时可用 —— 进度到阈值后引擎自动开战，这里才会亮。平时不会自动触发。">对决</button>
+        </div>
       </section>
       <section class="tab-panel" id="panel-gens" role="tabpanel" hidden aria-label="历代搭档">
         <h2>历代搭档</h2>

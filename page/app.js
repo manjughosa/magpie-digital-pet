@@ -478,23 +478,33 @@ function pngImage(url) {
 
 // 把文本帧语义映射到 omnipet 帧编号：0=站姿 1=走路 2=攻击 3=开心 4=愤怒
 // 5-6=受伤 7-8=睡眠 9=进食1 10=进食2 11=走路2 12=开心2 13=愤怒2 14=攻击2
+// omnipet 精灵帧的真实含义（src/models/animation.py 的 PetFrame）：
+//   0 IDLE1 · 1 IDLE2 · 2 HAPPY · 3 ANGRY · 4 TRAIN1 · 5 TRAIN2
+//   6 ATK1 · 7 ATK2 · 8 EAT1 · 9 EAT2 · 10 NOPE · 11 NAP1 · 12 NAP2
+//   13 SICK · 14 LOSE · 15 SPECIAL（卡片图，页面已经过滤掉）
+// 蛋用的是另一套 EggFrame：0 IDLE1 · 1 IDLE2 · 2 HATCH
+const PNG_ACTION_FRAMES = {
+  "pet-feed-snack": [8, 9],   // 进食
+  "pet-play": [2, 0],         // 开心
+  "pet-clean": [2, 0],        // 没有洗澡动画，用开心帧 + 水花粒子
+  "pet-rest": [11, 12],       // 打盹
+  "pet-pet": [2, 0],          // 开心
+  "pet-pet-egg": [1, 0],      // 蛋只有 IDLE/HATCH，轻轻晃一下
+  "pet-battle": [6, 7],       // 攻击
+  "digital-pet-spawn": [2, 0],
+};
+
 function pickPngFrame(state, tick, count) {
-  // 照顾操作的动作帧
   if (override && Date.now() < override.until) {
-    const actionMap = {
-      "pet-feed-snack": [9, 10], "pet-play": [3, 12], "pet-clean": [0, 1],
-      "pet-rest": [7, 8], "pet-pet-egg": [3, 0], "pet-pet": [3, 0],
-      "pet-battle": [2, 14], "digital-pet-spawn": [3, 12],
-    };
-    const frames = actionMap[override.name] ?? [0, 1];
+    const frames = PNG_ACTION_FRAMES[override.name] ?? [0, 1];
     return frames[tick % frames.length] % count;
   }
-  // 鼠标交互帧：拖拽=开心，点击跳跃=开心，悬停=开心微倾
-  if (inter.dragging) return 3 % count;
-  if (Date.now() < inter.hopUntil) return 3 % count;
+  // 鼠标交互帧：拖拽 / 点击跳跃 / 悬停都是开心
+  if (inter.dragging) return 2 % count;
+  if (Date.now() < inter.hopUntil) return 2 % count;
   if (Date.now() < inter.spinUntil) return 1 % count;
-  if (inter.hover) return [3, 0][tick % 2] % count;
-  // 常态呼吸：站姿和走路交替
+  if (inter.hover) return [2, 0][tick % 2] % count;
+  // 常态呼吸：IDLE1 / IDLE2 交替
   return [0, 1][tick % 2] % count;
 }
 
@@ -762,7 +772,7 @@ function paintHero(s) {
   const hasBar = typeof p.pct === "number";
   $("evo-fill").style.width = hasBar ? `${Math.max(1.5, p.pct).toFixed(1)}%` : "0%";
   $("evo-text").textContent = hasBar
-    ? `${shownName} 本阶段 ${fmt(p.gauge)} / ${fmt(p.threshold)} tokens`
+    ? `${shownName} 本阶段 ${fmt(p.gauge)} / ${fmt(p.threshold)} 经验`
     : `${shownName} · 这个形态没有存档进度`;
   $("evo-pct").textContent = hasBar ? `${p.pct.toFixed(2)}%` : "";
   $("display-note").hidden = !showingOther;
@@ -1016,6 +1026,63 @@ function paintLists(s) {
   }
 }
 
+// 养成难度：右上角齿轮。只改经验槽速度，服务端按 mult 缩放喂入的 token。
+let difficultySig = "";
+function closeGear() {
+  const pop = $("difficulty-pop");
+  const btn = $("difficulty-gear");
+  if (pop) pop.hidden = true;
+  if (btn) btn.setAttribute("aria-expanded", "false");
+}
+
+function paintDifficulty(s) {
+  const box = $("difficulty-list");
+  if (!box) return;
+  const current = String(s?.difficulty?.value ?? "1");
+  const levels = Array.isArray(s?.difficulty?.levels) && s.difficulty.levels.length
+    ? s.difficulty.levels
+    : [{ value: "1", label: "普通" }];
+  const sig = `${current}|${levels.map((l) => l.value).join(",")}`;
+  if (sig === difficultySig) return;
+  difficultySig = sig;
+  box.textContent = "";
+  for (const lv of levels) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = lv.value === current ? "gear-item is-on" : "gear-item";
+    btn.setAttribute("aria-pressed", String(lv.value === current));
+    const name = document.createElement("b");
+    name.textContent = lv.label;
+    const meta = document.createElement("span");
+    meta.className = "muted small";
+    meta.textContent = `经验槽 ×${lv.value}`;
+    btn.append(name, meta);
+    btn.addEventListener("click", () => {
+      closeGear();
+      if (lv.value !== current) command("pet-set-difficulty", lv.value);
+    });
+    box.append(btn);
+  }
+  const gear = $("difficulty-gear");
+  const label = levels.find((l) => l.value === current)?.label ?? "普通";
+  if (gear) gear.title = `养成难度选择 · 当前：${label}`;
+  const mult = Number(current);
+  const rateText =
+    mult === 1
+      ? "1 token 记 1 点经验"
+      : mult < 1
+        ? `1 token 记 ${Math.round(1 / mult)} 点经验`
+        : `${mult} token 记 1 点经验`;
+  const note = $("difficulty-note");
+  if (note) note.textContent = `现在：${rateText}`;
+  // 经验槽旁边常驻一行，省得以为「切了没反应」
+  const hint = $("difficulty-hint");
+  if (hint) {
+    hint.hidden = mult === 1;
+    hint.textContent = mult === 1 ? "" : `养成难度「${label}」×${current} · ${rateText}`;
+  }
+}
+
 function paint(s) {
   lastState = s;
   if (s.ok) {
@@ -1029,6 +1096,7 @@ function paint(s) {
   if (variant) habitat.classList.add(`habitat--${variant}`);
   $("status-line").textContent = statusText(s);
   paintHero(s);
+  paintDifficulty(s);
   paintCareBars(s);
   paintDaily(s);
   paintCollection(s);
@@ -1057,6 +1125,8 @@ function updateButtons() {
   for (const btn of careButtons()) {
     const base = btn.dataset.label;
     const key = btn.dataset.cooldown;
+    const tip = btn.dataset.tip || "";
+    const withTip = (extra) => (tip ? (extra ? `${tip} · ${extra}` : tip) : extra || "");
     if (btn.id === "btn-pet-egg") {
       const isEgg = (partner?.node?.stage ?? -1) === 0;
       btn.hidden = !!partner && !isEgg;
@@ -1064,36 +1134,37 @@ function updateButtons() {
     if (!s || !s.ok) {
       btn.disabled = true;
       btn.textContent = base;
+      btn.title = withTip("状态还没读到");
       continue;
     }
     if (!partner) {
       btn.disabled = true;
       btn.textContent = base;
-      btn.title = "先孵一颗蛋";
+      btn.title = withTip("先孵一颗蛋");
       continue;
     }
     if (expRunning) {
       btn.disabled = true;
       btn.textContent = base;
-      btn.title = "探险中，等它回来吧";
+      btn.title = withTip("探险中，等它回来吧");
       continue;
     }
     const until = care?.cooldowns?.[key] ?? 0;
     if (until > now) {
       btn.disabled = true;
       btn.textContent = `${base} · ${fmtDuration(until - now)}`;
-      btn.title = "冷却中";
+      btn.title = withTip("冷却中");
       continue;
     }
     if (key === "play" && care && care.energy < 20) {
       btn.disabled = true;
       btn.textContent = base;
-      btn.title = "它现在太困了，先休息一下";
+      btn.title = withTip("它现在太困了，先休息一下");
       continue;
     }
     btn.disabled = false;
     btn.textContent = base;
-    btn.title = "";
+    btn.title = withTip();
   }
   if (!s || !s.ok) hint.textContent = "";
   else if (!partner) hint.textContent = "先孵一颗蛋，再来照顾它。";
@@ -1148,12 +1219,12 @@ function updateButtons() {
       spawnBtn.disabled = false;
       spawnBtn.title = "孵出第一颗蛋";
     } else {
-      // 只有一道门：孵蛋条件计数器要比上次领蛋时更大（这期间真的进化过）
+      // 只有一道门：这期间要真的有过一次进化（内部叫孵化条件计数器，界面上不提）
       const ready = s.eggReady !== false;
       spawnBtn.disabled = !ready;
       spawnBtn.title = ready
         ? "当前伙伴会退役，需要二次确认"
-        : `孵蛋条件计数器没变化（${s.eggCounter ?? 0}，上次领蛋时 ${s.eggSnapshot ?? 0}）：先让一只伙伴进化`;
+        : "当前伙伴达到 baby II（含以上阶段）后才能获取新的蛋";
     }
   }
 
@@ -1167,6 +1238,26 @@ function updateButtons() {
 let busy = false;
 // 获取新蛋确认：点一下待确认，再点一下才真的换蛋。没有倒计时，点别的按钮就取消。
 let spawnArmed = false;
+
+const gearBtnEl = $("difficulty-gear");
+if (gearBtnEl) {
+  gearBtnEl.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const pop = $("difficulty-pop");
+    if (!pop) return;
+    const open = pop.hidden;
+    pop.hidden = !open;
+    gearBtnEl.setAttribute("aria-expanded", String(open));
+  });
+  document.addEventListener("click", (e) => {
+    const pop = $("difficulty-pop");
+    if (!pop || pop.hidden) return;
+    if (!pop.contains(e.target) && !gearBtnEl.contains(e.target)) closeGear();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeGear();
+  });
+}
 
 const commandButtons = () => document.querySelectorAll("[data-command]");
 
@@ -1199,7 +1290,7 @@ async function command(name, args) {
       .join("；");
     say(toast || j?.text || "完成", true);
     if (ACTION_FRAMES[name]) {
-      override = { names: ACTION_FRAMES[name], until: Date.now() + 2400 };
+      override = { name, names: ACTION_FRAMES[name], until: Date.now() + 2400 };
     }
     if (ACTION_EFFECTS[name]) {
       actionEffect = { kind: name, style: ACTION_EFFECTS[name], startedAt: Date.now() };
@@ -1225,6 +1316,15 @@ document.querySelectorAll("[data-command]").forEach((btn) => {
       : btn.textContent;
   btn.addEventListener("click", () => {
     const name = btn.dataset.command;
+    // 动作展示：纯本地演示，不查冷却、不改数值、不进对决
+    if (btn.dataset.preview === "1") {
+      override = { name, names: ACTION_FRAMES[name] ?? ["walk_1"], until: Date.now() + 2400 };
+      if (ACTION_EFFECTS[name]) {
+        actionEffect = { kind: name, style: ACTION_EFFECTS[name], startedAt: Date.now() };
+      }
+      say(`演示：${btn.textContent}`, true);
+      return;
+    }
     if (name === "digital-pet-spawn") {
       if (!spawnArmed) {
         spawnArmed = true;

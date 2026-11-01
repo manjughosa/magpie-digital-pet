@@ -91,7 +91,7 @@ test("reopening the database runs migrations once and keeps data", () => {
     .all()
     .map((row) => row.name);
   raw.close();
-  assert.equal(version, 5);
+  assert.equal(version, 6);
   assert.ok(columns.includes("cooldown_pet"), "v3 migration must add cooldown_pet");
   assert.deepEqual(tables, [
     "magpie_pet_achievements",
@@ -103,6 +103,7 @@ test("reopening the database runs migrations once and keeps data", () => {
     "magpie_pet_fragment_daily",
     "magpie_pet_inventory",
     "magpie_pet_names",
+    "magpie_pet_settings",
   ]);
 });
 
@@ -306,7 +307,10 @@ test("equipDecoration refuses unknown ids and never spends fragments when insuff
 test("fragments stop at the daily cap, spending is not limited", () => {
   const dbPath = freshDbPath();
   const store = createCareStore({ databasePath: dbPath });
-  const t0 = Date.now();
+  // 固定在今天 10:00，避免 t0 + 30 分钟跨过午夜导致「今日已得」算到明天
+  const anchor = new Date();
+  anchor.setHours(10, 0, 0, 0);
+  const t0 = anchor.getTime();
   const night = EXPEDITIONS.night.durationMs;
 
   // 先正常领一次，让当日计数行落库
