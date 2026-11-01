@@ -196,9 +196,12 @@ await test("bag only holds the forms you currently own; history stays locked", a
   const history = state.json.dex.find((d) => d.id === "2-001");
   assert.equal(history.unlocked, false);
   assert.equal(history.viewable, true);
-  // 手上这颗蛋也算背包里的一件
+  // 手上这颗蛋也算背包里的一件，并且带持有数量
   const unlocked = state.json.dex.filter((d) => d.unlocked).map((d) => d.id);
   assert.deepEqual(unlocked, ["0-001"]);
+  const eggRow = state.json.dex.find((d) => d.id === "0-001");
+  assert.equal(typeof eggRow.owned, "number");
+  assert.equal(eggRow.owned >= 1, true);
   assert.equal(state.json.partner.id, partnerId);
   assert.equal(state.json.partners.length, 1);
 });

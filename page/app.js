@@ -843,12 +843,15 @@ function paintDex(s) {
   const allDex = s.ok && Array.isArray(s.dex) ? s.dex : [];
   const viewableCount = allDex.filter((i) => i.viewable).length;
   const countEl = $("dex-count");
-  if (countEl) countEl.textContent = `当前 ${items.length} 张 · 可展示 ${viewableCount} / 共 ${allDex.length}`;
+  const ownedTotal = allDex.reduce((sum, i) => sum + (i.unlocked ? i.owned ?? 0 : 0), 0);
+  if (countEl) {
+    countEl.textContent = `当前 ${items.length} 张 · 可展示 ${viewableCount} / 共 ${allDex.length} · 持有 ${ownedTotal} 只`;
+  }
   const key = JSON.stringify([
     query,
     filter,
     s.partner?.engineNode?.id ?? null,
-    items.map((i) => [i.id, i.unlocked, i.viewable, i.current]),
+    items.map((i) => [i.id, i.unlocked, i.viewable, i.current, i.owned]),
   ]);
   if (key === dexPaintKey) return;
   dexPaintKey = key;
@@ -867,6 +870,13 @@ function paintDex(s) {
     const isEggCard = item.stage === 0;
     const title = document.createElement("b");
     title.textContent = isEggCard ? "????" : item.nameEn;
+    // 同一物种持有多个（例如两颗蛋）：图鉴合并成一条，但把数量标出来
+    if (item.owned > 1) {
+      const xN = document.createElement("span");
+      xN.className = "dex-owned";
+      xN.textContent = `×${item.owned}`;
+      title.append(" ", xN);
+    }
     const jp = document.createElement("span");
     jp.className = "muted small";
     // 蛋不暴露图鉴名和真实 id，统一 0-0000
