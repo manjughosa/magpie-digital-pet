@@ -21,5 +21,8 @@ const withTimeout = (promise, ms) =>
   if (theme && typeof theme.dark === "boolean") q.set("theme", theme.dark ? "dark" : "light");
   if (theme && typeof theme.lang === "string") q.set("lang", theme.lang);
 
+  // 带一个时间戳：magpie 的 WebView 会把同一个 URL 的旧文档（连同旧的 app.js
+  // 引用）缓存下来，换了版本也还在跑老代码。每次进页面都换 URL，强制重取。
+  q.set("v", String(Date.now()));
   location.replace("http://127.0.0.1:" + port + "/?" + q.toString());
 })();

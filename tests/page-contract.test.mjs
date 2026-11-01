@@ -148,9 +148,9 @@ test("dex selection, rename controls and action effects are wired", () => {
 
 test("destructive spawn requires a second click and dex switch warns about pinning", () => {
   assert.ok(js.includes("spawnArmed"), "spawn double-confirm state missing");
-  assert.ok(js.includes("再点一次确认孵蛋"), "spawn confirmation copy missing");
+  assert.ok(js.includes("再点一次确认获取新的蛋"), "spawn confirmation copy missing");
   assert.ok(!js.includes("4 秒内"), "spawn confirm must not use a timeout anymore");
-  assert.ok(js.includes("当前伙伴达到 baby II（含以上阶段）后才能孵下一颗蛋"), "spawn stage gate missing");
+  assert.ok(js.includes("当前伙伴达到 baby II（含以上阶段）后才能获取新的蛋"), "spawn stage gate missing");
   assert.ok(js.includes("spawnBtn.disabled = stage < 2"), "spawn gate must unlock from baby II upward");
   assert.ok(html.includes('id="battle-me"'), "battle bar must name the pet that is about to evolve");
   assert.ok(js.includes('$("battle-me").textContent'), "battle bar must fill that name from state");
@@ -161,6 +161,11 @@ test("destructive spawn requires a second click and dex switch warns about pinni
   assert.ok(js.includes('classList.toggle("is-final"'), "stage badge must switch to the final state");
   assert.ok(js.includes('command("pet-display", item.id)'), "dex switch must run in one click");
   assert.ok(html.includes('id="display-note"'), "page must mark the species that is only being displayed");
+  for (const label of ["只看背包", "查看已解锁", "全部图鉴", "只看未拥有"]) {
+    assert.ok(html.includes(label), `dex filter must offer ${label}`);
+  }
+  assert.ok(js.includes('" visited"'), "history-only forms must get their own card style");
+  assert.ok(html.includes('id="dex-count"'), "dex needs the visible counter");
   assert.ok(html.includes('id="hero-pin"'), "name row needs the quick 出战 button");
   assert.ok(html.includes('id="hero-poll"'), "name row needs the instant-refresh button");
   assert.ok(js.includes('classList.add("spinning")'), "refresh button must show it is polling");

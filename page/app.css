@@ -608,6 +608,13 @@ footer {
 .dex-card > button { margin-top: auto; }
 .dex-card.current { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
 .dex-card.locked { opacity: 0.46; filter: saturate(0.5); }
+/* 曾持有但不占背包：比未拥有亮，比背包淡，虚线边框提示可点 */
+.dex-card.visited {
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  background: color-mix(in srgb, var(--panel) 94%, var(--fg) 2%);
+}
+.dex-card.visited .dex-status { color: color-mix(in srgb, var(--accent) 80%, var(--muted)); }
 .dex-card b { font-size: 12.5px; overflow-wrap: anywhere; }
 .dex-status { font-size: 11px; color: var(--muted); }
 .dex-card button { padding: 4px 10px; font-size: 12px; width: 100%; }

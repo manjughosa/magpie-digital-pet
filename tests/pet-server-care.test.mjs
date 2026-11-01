@@ -173,13 +173,13 @@ await test("state exposes default care snapshot, collection and frames after spa
   assert.equal(state.petName, null);
   assert.equal(Array.isArray(state.dex), true);
   assert.equal(state.dex.length, 650);
-  // 蛋不是宠物：当前是 Digiegg 时，图鉴里没有任何解锁项
-  assert.equal(state.dex.filter((d) => d.unlocked).length, 0);
+  // 手上这颗蛋也算背包里的一件（否则背包里空着，看不见自己有的蛋）
+  assert.equal(state.dex.filter((d) => d.unlocked).length, 1);
   assert.equal(state.dex.find((d) => d.id === "0-001").current, true);
-  assert.equal(state.dex.find((d) => d.id === "0-001").unlocked, false);
+  assert.equal(state.dex.find((d) => d.id === "0-001").unlocked, true);
 });
 
-await test("dex unlocks every form the save has held, eggs excluded", async () => {
+await test("bag only holds the forms you currently own; history stays locked", async () => {
   let partnerId = null;
   withRawDb(dbA, (db) => {
     partnerId = db.query("SELECT partner_id FROM partners WHERE retired_at IS NULL LIMIT 1").get().partner_id;
@@ -192,13 +192,13 @@ await test("dex unlocks every form the save has held, eggs excluded", async () =
 
   const state = await httpJson(serverA.port, "/api/state");
   assert.equal(state.status, 200);
-  // 只出现在进化史里的形态也算持有过 → 解锁
-  assert.equal(state.json.dex.find((d) => d.id === "2-001").unlocked, true);
-  // 蛋（stage 0）不算宠物，不解锁
-  assert.equal(state.json.dex.find((d) => d.id === "0-001").unlocked, false);
+  // 只出现在进化史里的形态不算背包，但可以展示
+  const history = state.json.dex.find((d) => d.id === "2-001");
+  assert.equal(history.unlocked, false);
+  assert.equal(history.viewable, true);
+  // 手上这颗蛋也算背包里的一件
   const unlocked = state.json.dex.filter((d) => d.unlocked).map((d) => d.id);
-  assert.deepEqual(unlocked.sort(), ["2-001"]);
-  assert.equal(unlocked.includes("0-001"), false);
+  assert.deepEqual(unlocked, ["0-001"]);
   assert.equal(state.json.partner.id, partnerId);
   assert.equal(state.json.partners.length, 1);
 });
@@ -680,7 +680,7 @@ await test("pin chooses which partner grows; unpin falls back to the first partn
   }
 });
 
-await test("spawn unlocks from baby II upward, is rate limited, then uses the non-repeating starter pool", async () => {
+await test("spawn unlocks from baby II upward, is rate limited, and hands out an unknown egg", async () => {
   const tooEarly = await httpJson(serverA.port, "/api/command", {
     method: "POST",
     body: { name: "digital-pet-spawn" },
@@ -713,10 +713,11 @@ await test("spawn unlocks from baby II upward, is rate limited, then uses the no
   assert.equal(spawn.status, 200);
   const state = spawn.json.state;
   assert.equal(state.partner.generation, 2);
-  // 1-001 already appeared in this save's lineage, so the pool skips it and
-  // hands out the first unseen baby form instead of repeating the same one
-  assert.equal(state.partner.node.id, "1-002");
-  assert.equal(state.partner.node.stage, 1);
+  // 新拿到的就是一颗蛋：形态未知，等着喂够 token 才孵出 baby I
+  assert.equal(state.partner.node.id, "0-001");
+  assert.equal(state.partner.node.stage, 0);
+  assert.equal(state.partner.gauge, 0);
+  assert.equal(state.partner.battle, null);
   assert.equal(state.care.state.partnerId, state.partner.id);
   assert.ok(Math.abs(state.care.state.satiety - 72) < 0.1);
   assert.ok(Math.abs(state.care.state.bond - 0) < 0.1);

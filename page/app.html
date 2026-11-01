@@ -150,7 +150,7 @@
       <section id="manage" aria-label="管理">
         <h2>管理</h2>
         <div class="btn-row">
-          <button type="button" data-command="digital-pet-spawn">孵新蛋</button>
+          <button type="button" data-command="digital-pet-spawn">获取新的蛋</button>
           <button type="button" data-command="digital-pet-freeze">冻结生长</button>
           <button type="button" data-command="digital-pet-unfreeze">恢复生长</button>
           <button type="button" data-command="pet-pin-current">设为出战</button>
@@ -199,10 +199,12 @@
           <div class="dex-tools">
             <input id="dex-search" placeholder="搜索名字或 ID" aria-label="搜索图鉴">
             <select id="dex-filter" aria-label="筛选图鉴">
-              <option value="unlocked">只看已解锁</option>
+              <option value="unlocked">只看背包</option>
+              <option value="visited">查看已解锁</option>
               <option value="all">全部图鉴</option>
-              <option value="locked">只看未解锁</option>
+              <option value="locked">只看未拥有</option>
             </select>
+            <span class="muted small" id="dex-count"></span>
           </div>
           <div class="dex-grid" id="dex-grid"></div>
         </div>

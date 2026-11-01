@@ -703,19 +703,24 @@ function paintHero(s) {
     return;
   }
   const showingOther = Boolean(p.displayingOther);
-  // 展示别的伙伴时，标题就不要挂着出战那只有名字了
-  $("pet-name").textContent = showingOther ? p.node.nameEn : (s.petName || p.node.nameEn);
+  // 蛋期什么都不知道：名字、编号、阶段全是问号
+  const isEgg = (p.node?.stage ?? 0) === 0;
+  $("pet-name").textContent = isEgg ? "????" : showingOther ? p.node.nameEn : (s.petName || p.node.nameEn);
   // 中日名重复时只显示一次，不变成 "DemiVeemon · DemiVeemon" 这种假双名。
   const jp = p.node.nameJp;
-  $("pet-jp").textContent = !showingOther && s.petName
-    ? (jp && jp !== p.node.nameEn ? `${p.node.nameEn} · ${jp}` : p.node.nameEn)
-    : jp;
+  $("pet-jp").textContent = isEgg
+    ? "编号 ???? · 未知的蛋"
+    : !showingOther && s.petName
+      ? (jp && jp !== p.node.nameEn ? `${p.node.nameEn} · ${jp}` : p.node.nameEn)
+      : jp;
   const renameInput = $("pet-rename-input");
   if (renameInput && document.activeElement !== renameInput) renameInput.value = s.petName || "";
   // 阶段徽章跟着展示的那只走：gen 也一起换
-  $("pet-stage-badge").textContent = p.generation
-    ? `gen ${p.generation} · ${p.stageName}`
-    : `${p.stageName}（无存档）`;
+  $("pet-stage-badge").textContent = isEgg
+    ? `gen ${p.generation ?? "?"} · ????`
+    : p.generation
+      ? `gen ${p.generation} · ${p.stageName}`
+      : `${p.stageName}（无存档）`;
   // 标题栏右侧的快捷「出战」：只在展示的不是出战那只、且它有存档时出现
   const heroPin = $("hero-pin");
   if (heroPin) {
@@ -731,7 +736,7 @@ function paintHero(s) {
   // 经验槽跟着展示的那只走：它自己的 gauge / 自己的阶段槽
   const grow = p.engineNode ?? p.node;
   const growName = s.petName || grow.nameEn;
-  const shownName = p.node.nameEn;
+  const shownName = isEgg ? "????" : p.node.nameEn;
   const hasBar = typeof p.pct === "number";
   $("evo-fill").style.width = hasBar ? `${Math.max(1.5, p.pct).toFixed(1)}%` : "0%";
   $("evo-text").textContent = hasBar
@@ -829,12 +834,22 @@ function paintDex(s) {
   const filter = $("dex-filter")?.value || "unlocked";
   const items = (s.ok && Array.isArray(s.dex) ? s.dex : []).filter((item) => {
     if (filter === "unlocked" && !item.unlocked) return false;
-    if (filter === "locked" && item.unlocked) return false;
+    if (filter === "visited" && (!item.viewable || item.unlocked)) return false;
+    if (filter === "locked" && item.viewable) return false;
     if (!query) return true;
     return [item.id, item.nameEn, item.nameJp].some((v) => String(v || "").toLowerCase().includes(query));
   });
   // 卡片上的「当前宠物 / 展示中」跟着出战伙伴变，重绘 key 必须带上 engineNode
-  const key = JSON.stringify([query, filter, s.partner?.engineNode?.id ?? null, items.map((i) => [i.id, i.unlocked, i.current])]);
+  const allDex = s.ok && Array.isArray(s.dex) ? s.dex : [];
+  const viewableCount = allDex.filter((i) => i.viewable).length;
+  const countEl = $("dex-count");
+  if (countEl) countEl.textContent = `当前 ${items.length} 张 · 可展示 ${viewableCount} / 共 ${allDex.length}`;
+  const key = JSON.stringify([
+    query,
+    filter,
+    s.partner?.engineNode?.id ?? null,
+    items.map((i) => [i.id, i.unlocked, i.viewable, i.current]),
+  ]);
   if (key === dexPaintKey) return;
   dexPaintKey = key;
   grid.replaceChildren();
@@ -847,22 +862,41 @@ function paintDex(s) {
   }
   for (const item of items) {
     const card = document.createElement("div");
-    card.className = `dex-card${item.unlocked ? "" : " locked"}${item.current ? " current" : ""}`;
+    const stateClass = item.unlocked ? "" : item.viewable ? " visited" : " locked";
+    card.className = `dex-card${stateClass}${item.current ? " current" : ""}`;
+    const isEggCard = item.stage === 0;
     const title = document.createElement("b");
-    title.textContent = item.nameEn;
+    title.textContent = isEggCard ? "????" : item.nameEn;
     const jp = document.createElement("span");
     jp.className = "muted small";
-    jp.textContent = `${item.nameJp} · ${item.id} · stage ${item.stage}`;
+    // 蛋不暴露图鉴名和真实 id，统一 0-0000
+    jp.textContent = isEggCard
+      ? "编号 0-0000 · stage 0 · 蛋"
+      : `${item.nameJp} · ${item.id} · stage ${item.stage}`;
     const status = document.createElement("span");
     status.className = "dex-status";
-    if (!item.unlocked) {
-      status.textContent = "未解锁";
+    if (!item.viewable) {
+      status.textContent = "未拥有";
       card.append(title, jp, status);
       grid.append(card);
       continue;
     }
+    if (!item.unlocked) {
+      // 曾经持有过：能看，但不占背包
+      status.textContent = "曾持有 · 可展示";
+      const viewBtn = document.createElement("button");
+      viewBtn.type = "button";
+      viewBtn.dataset.command = "pet-display";
+      viewBtn.dataset.args = item.id;
+      viewBtn.textContent = item.current ? "切回当前伙伴" : "显示这只";
+      viewBtn.title = "曾经养过这只，可以切出来看看；它不占背包。";
+      viewBtn.addEventListener("click", () => command("pet-display", item.id));
+      card.append(title, jp, status, viewBtn);
+      grid.append(card);
+      continue;
+    }
     const isEngine = s.partner?.engineNode?.id === item.id;
-    status.textContent = isEngine ? "当前宠物" : item.current ? "展示中" : "已解锁";
+    status.textContent = isEngine ? "当前宠物" : item.current ? "展示中" : "背包中";
     const btn = document.createElement("button");
     btn.type = "button";
     btn.dataset.command = "pet-display";
@@ -1078,10 +1112,10 @@ function updateButtons() {
       spawnBtn.title = "孵出第一颗蛋";
     } else {
       const stage = partner.engineNode?.stage ?? partner.node?.stage ?? 0;
-      // baby II 及以上（stage 2+）解锁孵蛋；进化到更高阶段不会重新锁上
+      // baby II 及以上（stage 2+）才能获取新的蛋；进化到更高阶段不会重新锁上
       spawnBtn.disabled = stage < 2;
       spawnBtn.title = stage < 2
-        ? "当前伙伴达到 baby II（含以上阶段）后才能孵下一颗蛋"
+        ? "当前伙伴达到 baby II（含以上阶段）后才能获取新的蛋"
         : "当前伙伴会退役，需要二次确认";
     }
   }
@@ -1094,7 +1128,7 @@ function updateButtons() {
 // ---------- commands ----------
 
 let busy = false;
-// 孵蛋确认：点一下待确认，再点一下才真的孵。没有倒计时，点别的按钮就取消。
+// 获取新蛋确认：点一下待确认，再点一下才真的换蛋。没有倒计时，点别的按钮就取消。
 let spawnArmed = false;
 
 const commandButtons = () => document.querySelectorAll("[data-command]");
@@ -1157,8 +1191,8 @@ document.querySelectorAll("[data-command]").forEach((btn) => {
     if (name === "digital-pet-spawn") {
       if (!spawnArmed) {
         spawnArmed = true;
-        btn.textContent = "再点一次确认孵蛋";
-        say("再点一次「确认孵蛋」就开孵；当前伙伴会退役。点别的按钮则取消。");
+        btn.textContent = "再点一次确认获取新的蛋";
+        say("再点一次就获取新的蛋；当前伙伴会退役。点别的按钮则取消。");
         return;
       }
       spawnArmed = false;
