@@ -17,7 +17,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Database } from "bun:sqlite";
 
-import { createPetAdapter } from "../lib/pet.adapter.mjs";
+import { createPetAdapter, stageThresholds } from "../lib/pet.adapter.mjs";
 import { createPetServer } from "../lib/pet.server.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -269,10 +269,11 @@ await test("pet-pet-egg is rejected with HTTP 400 once the partner leaves the eg
   });
 });
 
-await test("pet-battle: first loss halves the gauge, rematch always wins", async () => {
+await test("相克试炼: a wrong attribute costs half the bar, the next attempt always wins", async () => {
+  // 3-001 Agumon 的属性是 vaccine；能克制它的只有 data
   const seedBattle = () => {
     withRawDb(dbA, (db) => {
-      db.run("UPDATE partners SET current_node_id = '1-001', gauge = 10000000, battle_opponent_node_id = '1-003' WHERE retired_at IS NULL");
+      db.run("UPDATE partners SET current_node_id = '1-001', gauge = 10000000, battle_opponent_node_id = '3-001' WHERE retired_at IS NULL");
       db.run(
         "INSERT INTO partner_combat_progress (partner_id, node_id, victories, battle_id) VALUES ((SELECT partner_id FROM partners WHERE retired_at IS NULL LIMIT 1), '1-001', 2, 'test-battle-id') ON CONFLICT(partner_id) DO UPDATE SET node_id = '1-001', victories = 2, battle_id = 'test-battle-id'",
       );
@@ -287,50 +288,52 @@ await test("pet-battle: first loss halves the gauge, rematch always wins", async
       }
     });
 
-  // 第一场：强制作弊败北（random ≥ 0.5）→ gauge 退回一半，记下连败
+  // 没选属性 → 400
   seedBattle();
-  const realRandom = Math.random;
-  Math.random = () => 0.99;
-  try {
-    const lost = await httpJson(serverA.port, "/api/command", {
-      method: "POST",
-      body: { name: "pet-battle" },
-    });
-    assert.equal(lost.status, 200);
-    assert.match(lost.json.text, /败给/);
-    assert.match(lost.json.text, /必胜/);
-    assert.equal(lost.json.state.partner.battle, null);
-    assert.equal(lost.json.state.partner.gauge, 5000000, "loss must halve the gauge, not wipe it");
-    assert.equal(losses(), 1);
+  const noPick = await httpJson(serverA.port, "/api/command", { method: "POST", body: { name: "pet-battle" } });
+  assert.equal(noPick.status, 400);
+  assert.equal(noPick.json.reason, "attribute-required");
 
-    // 第二场：同样的作弊 random 也必须赢（连胜连败规则）
-    seedBattle();
-    const rematch = await httpJson(serverA.port, "/api/command", {
-      method: "POST",
-      body: { name: "pet-battle" },
-    });
-    assert.equal(rematch.status, 200);
-    assert.match(rematch.json.text, /对决胜利/);
-    assert.equal(rematch.json.state.partner.battle, null);
-    assert.equal(rematch.json.state.partner.gauge, 0);
-    const node = rematch.json.state.partner.node;
-    assert.ok(node.id === "1-001" || node.stage === 2, `unexpected node after rematch: ${JSON.stringify(node)}`);
-    assert.equal(losses(), 0, "win must clear the loss streak");
-  } finally {
-    Math.random = realRandom;
-  }
+  // 选了不克制的 vaccine → 败北，gauge 减半，记一次连败
+  const lost = await httpJson(serverA.port, "/api/command", {
+    method: "POST",
+    body: { name: "pet-battle", args: "vaccine" },
+  });
+  assert.equal(lost.status, 200);
+  assert.match(lost.json.text, /试炼失败/);
+  assert.match(lost.json.text, /下一场必胜/);
+  assert.equal(lost.json.state.partner.battle, null);
+  assert.equal(lost.json.state.partner.gauge, 5000000, "loss must halve the gauge, not wipe it");
+  assert.equal(losses(), 1);
+
+  // 第二次：同样选错也必胜（连败规则保留）
+  seedBattle();
+  const rematch = await httpJson(serverA.port, "/api/command", {
+    method: "POST",
+    body: { name: "pet-battle", args: "vaccine" },
+  });
+  assert.equal(rematch.status, 200);
+  assert.match(rematch.json.text, /相克成功/);
+  assert.equal(rematch.json.state.partner.battle, null);
+  assert.equal(rematch.json.state.partner.gauge, 0);
+  assert.equal(losses(), 0, "win must clear the loss streak");
+
+  // 选对了（data 克 vaccine）→ 直接成功
+  seedBattle();
+  const right = await httpJson(serverA.port, "/api/command", {
+    method: "POST",
+    body: { name: "pet-battle", args: "data" },
+  });
+  assert.equal(right.status, 200);
+  assert.match(right.json.text, /相克成功/);
+  assert.equal(right.json.state.partner.battle, null);
 
   const idle = await httpJson(serverA.port, "/api/command", {
     method: "POST",
-    body: { name: "pet-battle" },
+    body: { name: "pet-battle", args: "data" },
   });
   assert.equal(idle.status, 400);
   assert.equal(idle.json.reason, "no-pending-battle");
-
-  withRawDb(dbA, (db) => {
-    db.run("UPDATE partners SET current_node_id = '0-001', gauge = 0, battle_opponent_node_id = NULL WHERE retired_at IS NULL");
-    db.run("UPDATE partner_combat_progress SET victories = 0, battle_id = NULL");
-  });
 });
 
 await test("pet-display only changes display, never pins; unpin clears both", async () => {
@@ -381,6 +384,41 @@ await test("pet-display only changes display, never pins; unpin clears both", as
       db.run("UPDATE vpet_control_state SET cheat_node_id = NULL WHERE control_id = 1");
       db.run("CREATE TABLE IF NOT EXISTS magpie_pet_display_state (control_id INTEGER PRIMARY KEY CHECK (control_id = 1), node_id TEXT)");
       db.run("DELETE FROM magpie_pet_display_state");
+    });
+  }
+});
+
+await test("panel follows the displayed partner: its own generation, gauge and stage bar", async () => {
+  withRawDb(dbA, (db) => {
+    db.run(
+      `INSERT INTO partners (partner_id, generation, current_node_id, gauge, is_terminal, created_at, retired_at)
+       VALUES ('partner-view-test', 7, '2-001', 1234567, 0, '2026-01-01T00:00:00.000Z', '2026-01-02T00:00:00.000Z')`,
+    );
+    // 出战那只挪到别的节点，确保「展示覆盖」和它在役形态不是同一个
+    db.run("UPDATE partners SET current_node_id = '0-001', gauge = 0 WHERE retired_at IS NULL");
+    db.run("CREATE TABLE IF NOT EXISTS magpie_pet_display_state (control_id INTEGER PRIMARY KEY CHECK (control_id = 1), node_id TEXT)");
+    db.run(
+      "INSERT INTO magpie_pet_display_state (control_id, node_id) VALUES (1, '2-001') ON CONFLICT(control_id) DO UPDATE SET node_id = excluded.node_id",
+    );
+  });
+  try {
+    const shown = await httpJson(serverA.port, "/api/state");
+    const p = shown.json.partner;
+    assert.equal(p.node.id, "2-001", "display override shows the other species");
+    assert.equal(p.displayingOther, true);
+    // 面板跟着展示的那只：gen / gauge / 槽 都是它自己的
+    assert.equal(p.generation, 7);
+    assert.equal(p.gauge, 1234567);
+    assert.equal(p.threshold, stageThresholds()[2]);
+    assert.equal(p.stageName, "baby II");
+    assert.equal(p.growing, false, "展示中的那只不是出战伙伴");
+    // 出战那只的数字仍然单独给出来
+    assert.equal(p.engineGauge >= 0, true);
+    assert.equal(typeof p.engineGeneration, "number");
+  } finally {
+    withRawDb(dbA, (db) => {
+      db.run("DELETE FROM magpie_pet_display_state");
+      db.run("DELETE FROM partners WHERE partner_id = 'partner-view-test'");
     });
   }
 });
@@ -526,14 +564,15 @@ await test("unknown pet-expedition-* commands are rejected as unknown-command wi
   assert.equal(after.json.collection.equippedTheme, themeBefore);
 });
 
-await test("original engine commands stay compatible; set displays the pinned node and unpin restores it", async () => {
+await test("engine set is a display cheat, not the 出战 lock; unbinding returns to the default partner", async () => {
   const set = await httpJson(serverA.port, "/api/command", {
     method: "POST",
     body: { name: "digital-pet-set", args: "1-001" },
   });
   assert.equal(set.status, 200);
   assert.ok(set.json.state.partner);
-  assert.equal(set.json.state.pinned, "1-001");
+  // 引擎的 cheat 位只换展示，不参与「出战锁定」
+  assert.equal(set.json.state.pinned, null, "engine cheat must not read as the 出战 lock");
   assert.equal(set.json.state.partner.node.id, "1-001");
   assert.equal(set.json.state.partner.engineNode.id, "0-001");
   assert.ok(set.json.state.care);
@@ -552,6 +591,89 @@ await test("original engine commands stay compatible; set displays the pinned no
   assert.equal(unpin.status, 200);
   assert.equal(unpin.json.state.pinned, null);
   assert.equal(unpin.json.state.partner.node.id, "0-001");
+});
+
+await test("pet-poll-now triggers one manual poll and reports how many rows landed", async () => {
+  let calls = 0;
+  const pollServer = createPetServer({
+    adapter: adapterA,
+    port: 0,
+    notifyGate: () => false,
+    pollNow: async () => {
+      calls += 1;
+      return 2;
+    },
+  });
+  assert.equal(await pollServer.start(), true);
+  try {
+    const res = await new Promise((resolve, reject) => {
+      const req = httpRequest(
+        { host: "127.0.0.1", port: pollServer.port, path: "/api/command", method: "POST", headers: { "content-type": "text/plain", "x-magpie-pet-token": pollServer.apiToken } },
+        (r) => {
+          let text = "";
+          r.on("data", (c) => (text += c));
+          r.on("end", () => resolve({ status: r.statusCode, json: JSON.parse(text) }));
+        },
+      );
+      req.on("error", reject);
+      req.end(JSON.stringify({ name: "pet-poll-now" }));
+    });
+    assert.equal(res.status, 200);
+    assert.equal(calls, 1, "one click = exactly one poll");
+    assert.ok(res.json.text.includes("2"), "reports how many rows were fed");
+  } finally {
+    await pollServer.close();
+  }
+});
+
+await test("pin chooses which partner grows; unpin falls back to the first partner", async () => {
+  withRawDb(dbA, (db) => {
+    db.run(
+      `INSERT INTO partners (partner_id, generation, current_node_id, gauge, is_terminal, created_at, retired_at)
+       VALUES ('partner-pin-test', 50, '1-003', 12345, 0, '2026-01-01T00:00:00.000Z', '2026-01-02T00:00:00.000Z')`,
+    );
+    db.run("CREATE TABLE IF NOT EXISTS magpie_pet_pin (control_id INTEGER PRIMARY KEY CHECK (control_id = 1), partner_id TEXT NOT NULL, node_id TEXT NOT NULL)");
+    db.run("DELETE FROM magpie_pet_pin");
+  });
+  try {
+    const pin = await httpJson(serverA.port, "/api/command", {
+      method: "POST",
+      body: { name: "pet-pin", args: "1-003" },
+    });
+    assert.equal(pin.status, 200);
+    assert.equal(pin.json.state.pinned, "1-003");
+    // 钉住 = 换吃经验的那只：退役的清掉，principal 换过去
+    assert.equal(pin.json.state.partner.engineNode.id, "1-003");
+    assert.equal(pin.json.state.partner.gauge, 12345);
+
+    // 只换视角不动出战锁定
+    await httpJson(serverA.port, "/api/command", { method: "POST", body: { name: "pet-display", args: "0-001" } });
+    const shown = await httpJson(serverA.port, "/api/state");
+    assert.equal(shown.json.state?.pinned ?? shown.json.pinned, "1-003");
+    assert.equal(shown.json.partner.engineNode.id, "1-003");
+    assert.equal(shown.json.partner.node.id, "0-001", "display override still only affects the sprite/name side");
+
+    const unpin = await httpJson(serverA.port, "/api/command", {
+      method: "POST",
+      body: { name: "pet-unpin" },
+    });
+    assert.equal(unpin.status, 200);
+    assert.equal(unpin.json.state.pinned, null);
+    // 没有锁定 = 默认第一只（generation 最小）出战
+    assert.equal(unpin.json.state.partner.engineNode.id, "0-001");
+
+    const stranger = await httpJson(serverA.port, "/api/command", {
+      method: "POST",
+      body: { name: "pet-pin", args: "7-001" },
+    });
+    assert.equal(stranger.status, 400);
+    assert.equal(stranger.json.reason, "not-a-partner");
+  } finally {
+    withRawDb(dbA, (db) => {
+      db.run("DELETE FROM partners WHERE partner_id = 'partner-pin-test'");
+      db.run("DELETE FROM magpie_pet_pin");
+    });
+  }
 });
 
 await test("spawn unlocks from baby II upward, is rate limited, then uses the non-repeating starter pool", async () => {

@@ -151,7 +151,20 @@ test("destructive spawn requires a second click and dex switch warns about pinni
   assert.ok(js.includes("再点一次确认孵新蛋"), "spawn confirmation copy missing");
   assert.ok(js.includes("当前伙伴达到 baby II（含以上阶段）后才能孵下一颗蛋"), "spawn stage gate missing");
   assert.ok(js.includes("spawnBtn.disabled = stage < 2"), "spawn gate must unlock from baby II upward");
-  assert.ok(js.includes("不钉住、不影响生长"), "dex display-only warning missing");
+  assert.ok(html.includes('id="battle-me"'), "battle bar must name the pet that is about to evolve");
+  assert.ok(js.includes('$("battle-me").textContent'), "battle bar must fill that name from state");
+  for (const tone of ["vaccine", "data", "virus"]) {
+    assert.ok(html.includes(`trial-card--${tone}`), `trial must offer the ${tone} card`);
+  }
+  assert.ok(html.includes('id="battle-stage"'), "trial card needs a first/final stage badge");
+  assert.ok(js.includes('classList.toggle("is-final"'), "stage badge must switch to the final state");
+  assert.ok(js.includes('command("pet-display", item.id)'), "dex switch must run in one click");
+  assert.ok(html.includes('id="display-note"'), "page must mark the species that is only being displayed");
+  assert.ok(html.includes('id="hero-pin"'), "name row needs the quick 出战 button");
+  assert.ok(html.includes('id="hero-poll"'), "name row needs the instant-refresh button");
+  assert.ok(js.includes('classList.add("spinning")'), "refresh button must show it is polling");
+  assert.ok(js.includes('$("hero-pin").hidden'), "quick 出战 button must only show for a displayed, non-growing pet");
+  assert.ok(js.includes("不改出战伙伴"), "dex display-only warning missing");
   assert.ok(js.includes('"pet-display"'), "dex buttons must use pet-display, never the pin command");
   assert.ok(html.includes('data-command="pet-unpin"'), "unpin button missing");
 });

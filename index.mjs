@@ -17,7 +17,7 @@ const DEFAULTS = {
   notifications: true,
   includeCacheTokens: false,
   backfill: false,
-  pollSeconds: 60,
+  pollSeconds: 20,
   gatewayUrl: "http://127.0.0.1:3425",
   dbPath: "",
   port: 3571,
@@ -45,7 +45,6 @@ async function startAll(options) {
   const port = Number.isFinite(Number(opts.port)) && Number(opts.port) >= 0 ? Number(opts.port) : 3571;
 
   const adapter = createPetAdapter({ dbPath, notifyGate: () => opts.notifications !== false });
-  server = createPetServer({ adapter, port });
   watcher = createPetWatcher({
     adapter,
     gatewayUrl: opts.gatewayUrl,
@@ -54,6 +53,8 @@ async function startAll(options) {
     notifications: opts.notifications !== false,
     backfill: opts.backfill === true,
   });
+  // 页面上的「立即刷新」直接调 watcher 的 pollNow，不用等下一轮
+  server = createPetServer({ adapter, port, pollNow: () => watcher.pollNow() });
   await server.start();
   watcher.start();
 }

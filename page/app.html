@@ -25,8 +25,12 @@
         <span class="pet-name" id="pet-name">…</span>
         <span class="pet-jp" id="pet-jp"></span>
         <span class="badge" id="pet-stage-badge"></span>
-        <span class="badge warn" id="pet-pin-badge" hidden>已钉住 · 不生长</span>
+        <span class="badge" id="pet-pin-badge" hidden>出战中</span>
         <span class="badge warn" id="pet-frozen-badge" hidden>冻结中 · 不生长</span>
+        <button type="button" class="hero-poll" id="hero-poll" data-command="pet-poll-now"
+          title="立即拉取最新用量，不用等下一轮（默认 20 秒）" aria-label="立即刷新">↻</button>
+        <button type="button" class="hero-pin" id="hero-pin" data-command="pet-pin-current" hidden
+          title="把当前展示的这只设为出战，经验从此算给它">出战</button>
       </div>
       <p class="status-line" id="status-line">读取中…</p>
       <div class="rename-row">
@@ -39,8 +43,52 @@
           <span id="evo-text"></span>
           <span class="muted" id="evo-pct"></span>
         </div>
+        <div class="muted small" id="display-note" hidden></div>
       </div>
-      <div class="battle" id="battle" hidden>进化对决待战：对手 <b id="battle-foe"></b><button type="button" class="battle-fight" data-command="pet-battle">迎战</button></div>
+      <div class="battle" id="battle" hidden>
+        <div class="trial-head">
+          <span class="trial-title">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 4 6v6c0 5 3.4 8.6 8 10 4.6-1.4 8-5 8-10V6l-8-4Z"/><path d="M9 12l2 2 4-4"/></svg>
+            进化试炼
+          </span>
+          <span class="trial-stage" id="battle-stage">首次试炼</span>
+        </div>
+
+        <div class="trial-vs">
+          <span class="trial-side">
+            <b id="battle-me"></b>
+            <span class="trial-side-sub">准备进化</span>
+          </span>
+          <span class="trial-vs-badge">VS</span>
+          <span class="trial-side trial-side--foe">
+            <b id="battle-foe"></b>
+            <span class="trial-side-sub">对手属性 · <b id="battle-attr">无属性</b></span>
+          </span>
+        </div>
+
+        <div class="trial-picks">
+          <button type="button" class="trial-card trial-card--vaccine" data-command="pet-battle" data-args="vaccine">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v5.5c0 4.6-3 8-7 9.5-4-1.5-7-4.9-7-9.5V6l7-3Z"/><path d="M12 8v6M9 11h6"/></svg>
+            <span class="trial-name">疫苗</span>
+            <span class="trial-sub">克 病毒</span>
+          </button>
+          <button type="button" class="trial-card trial-card--data" data-command="pet-battle" data-args="data">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6"/><path d="M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/></svg>
+            <span class="trial-name">数据</span>
+            <span class="trial-sub">克 疫苗</span>
+          </button>
+          <button type="button" class="trial-card trial-card--virus" data-command="pet-battle" data-args="virus">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.2 5.2l2.1 2.1M16.7 16.7l2.1 2.1M18.8 5.2l-2.1 2.1M7.3 16.7l-2.1 2.1"/></svg>
+            <span class="trial-name">病毒</span>
+            <span class="trial-sub">克 数据</span>
+          </button>
+        </div>
+
+        <ul class="trial-rules">
+          <li>首次挑战：属性相克，失败退回 50% 进化进度</li>
+          <li>再次挑战：必定成功，完成进化</li>
+        </ul>
+      </div>
     </div>
   </section>
 
@@ -105,12 +153,12 @@
           <button type="button" data-command="digital-pet-spawn">孵新蛋</button>
           <button type="button" data-command="digital-pet-freeze">冻结生长</button>
           <button type="button" data-command="digital-pet-unfreeze">恢复生长</button>
-          <button type="button" data-command="pet-pin-current">钉住当前</button>
-          <button type="button" data-command="pet-unpin">取消钉住</button>
+          <button type="button" data-command="pet-pin-current">设为出战</button>
+          <button type="button" data-command="pet-unpin">恢复默认出战</button>
         </div>
         <div id="set-row">
           <input id="set-id" placeholder="4-001" spellcheck="false" aria-label="要钉住的图鉴 ID">
-          <button type="button" data-command="digital-pet-set">钉住此 ID</button>
+          <button type="button" data-command="digital-pet-set">开发者：钉住此 ID（暂停生长）</button>
         </div>
       </section>
 
@@ -122,7 +170,7 @@
           <button type="button" data-command="pet-decoration-equip" data-args="night">夜空背景 · 25 碎片</button>
           <button type="button" data-command="pet-decoration-equip" data-args="terminal">终端背景 · 40 碎片</button>
           <button type="button" data-command="pet-decoration-equip" data-args="ocean">海洋背景 · 60 碎片</button>
-          <button type="button" data-command="pet-decoration-equip" data-args="sunset">落日背景 · 80 碎片</button>
+          <button type="button" data-command="pet-decoration-equip" data-args="sunset">遗迹背景 · 80 碎片</button>
           <button type="button" data-command="pet-decoration-equip" data-args="snow">雪原背景 · 120 碎片</button>
           <button type="button" data-command="pet-decoration-equip" data-args="sakura">樱色背景 · 160 碎片</button>
           <button type="button" data-command="pet-decoration-equip" data-args="void">虚空背景 · 200 碎片</button>

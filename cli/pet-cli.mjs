@@ -99,9 +99,17 @@ function status() {
   console.log(`db        ${dbPath}`);
   console.log(`fed       ${receipts.c} requests · ${fmtTokens(receipts.t ?? 0)} tokens（累计）`);
   console.log(`trainer   ${fmtTokens(trainer?.total_tokens ?? 0)} tokens`);
+  let pin = null;
+  try {
+    pin = db.query("SELECT node_id FROM magpie_pet_pin WHERE control_id = 1").get() ?? null;
+  } catch {
+    pin = null;
+  }
+  if (pin) console.log(`pin       ${nodeLabel(pin.node_id)}（手动设为出战）`);
   if (control?.cheat_node_id) {
-    console.log(`mode      pinned to ${nodeLabel(control.cheat_node_id)} (set; no growth)`);
-  } else if (control?.frozen === 1) {
+    console.log(`cheat     display pinned to ${nodeLabel(control.cheat_node_id)} (dev; no growth)`);
+  }
+  if (control?.frozen === 1) {
     console.log(`mode      frozen (usage is recorded, pet does not grow)`);
   }
   if (!partner) {
@@ -199,7 +207,7 @@ db: ${dbPath}
   status              pet, gauge, progress and read-only care summary
   spawn               hatch a new egg
   freeze | unfreeze   stop / resume growth
-  set <id>            pin a Digimon (cheat; no growth while pinned)
+  set <id>            dev cheat: pin the display to a Digimon (no growth while pinned)
   events [n]          last n engine events
   partners            every generation raised
   --db <path>         use another database`);

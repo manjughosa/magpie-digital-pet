@@ -201,8 +201,11 @@ function drawGround() {
     strip = "rgba(90, 70, 35, 0.18)";
     shadow = "rgba(90, 70, 35, 0.22)";
   }
-  ctx.fillStyle = strip;
-  ctx.fillRect(0, GROUND_Y, CW, CH - GROUND_Y);
+  // 有装饰背景图时，地面留给画面本身，只画脚下阴影
+  if (!variant) {
+    ctx.fillStyle = strip;
+    ctx.fillRect(0, GROUND_Y, CW, CH - GROUND_Y);
+  }
   // 宠物脚下的柔和阴影
   ctx.fillStyle = shadow;
   ctx.beginPath();
@@ -696,24 +699,64 @@ function paintHero(s) {
     $("evo-text").textContent = "";
     $("evo-pct").textContent = "";
     $("battle").hidden = true;
+    if ($("hero-pin")) $("hero-pin").hidden = true;
     return;
   }
-  $("pet-name").textContent = s.petName || p.node.nameEn;
+  const showingOther = Boolean(p.displayingOther);
+  // 展示别的伙伴时，标题就不要挂着出战那只有名字了
+  $("pet-name").textContent = showingOther ? p.node.nameEn : (s.petName || p.node.nameEn);
   // 中日名重复时只显示一次，不变成 "DemiVeemon · DemiVeemon" 这种假双名。
   const jp = p.node.nameJp;
-  $("pet-jp").textContent = s.petName
+  $("pet-jp").textContent = !showingOther && s.petName
     ? (jp && jp !== p.node.nameEn ? `${p.node.nameEn} · ${jp}` : p.node.nameEn)
     : jp;
   const renameInput = $("pet-rename-input");
   if (renameInput && document.activeElement !== renameInput) renameInput.value = s.petName || "";
-  $("pet-stage-badge").textContent = `gen ${p.generation} · ${p.stageName}`;
+  // 阶段徽章跟着展示的那只走：gen 也一起换
+  $("pet-stage-badge").textContent = p.generation
+    ? `gen ${p.generation} · ${p.stageName}`
+    : `${p.stageName}（无存档）`;
+  // 标题栏右侧的快捷「出战」：只在展示的不是出战那只、且它有存档时出现
+  const heroPin = $("hero-pin");
+  if (heroPin) {
+    heroPin.hidden = !(showingOther && p.generation);
+    heroPin.disabled = !(showingOther && p.generation);
+  }
   $("pet-pin-badge").hidden = !s.pinned;
+  if (s.pinned) {
+    const pinnedName = (s.dex ?? []).find((d) => d.id === s.pinned)?.nameEn ?? s.pinned;
+    $("pet-pin-badge").textContent = `出战中 · ${pinnedName}`;
+  }
   $("pet-frozen-badge").hidden = !s.frozen;
-  $("evo-fill").style.width = `${Math.max(1.5, p.pct).toFixed(1)}%`;
-  $("evo-text").textContent = `本阶段 ${fmt(p.gauge)} / ${fmt(p.threshold)} tokens`;
-  $("evo-pct").textContent = `${p.pct.toFixed(2)}%`;
+  // 经验槽跟着展示的那只走：它自己的 gauge / 自己的阶段槽
+  const grow = p.engineNode ?? p.node;
+  const growName = s.petName || grow.nameEn;
+  const shownName = p.node.nameEn;
+  const hasBar = typeof p.pct === "number";
+  $("evo-fill").style.width = hasBar ? `${Math.max(1.5, p.pct).toFixed(1)}%` : "0%";
+  $("evo-text").textContent = hasBar
+    ? `${shownName} 本阶段 ${fmt(p.gauge)} / ${fmt(p.threshold)} tokens`
+    : `${shownName} · 这个形态没有存档进度`;
+  $("evo-pct").textContent = hasBar ? `${p.pct.toFixed(2)}%` : "";
+  $("display-note").hidden = !showingOther;
+  if (showingOther) {
+    $("display-note").textContent = p.growing
+      ? `展示中：${shownName}`
+      : `展示中：${shownName}（不参与成长，${growName} 才在吃经验）`;
+  }
   $("battle").hidden = !p.battle;
-  if (p.battle) $("battle-foe").textContent = p.battle.nameEn;
+  if (p.battle) {
+    // 名字带上，不然只看得到对手、不知道是谁要进化
+    $("battle-me").textContent = growName;
+    $("battle-foe").textContent = p.battle.nameEn;
+    $("battle-attr").textContent = p.battle.attributeLabel ?? "无属性";
+    const stageEl = $("battle-stage");
+    if (stageEl) {
+      const final = Boolean(p.battle.retry);
+      stageEl.textContent = final ? "最终试炼" : "首次试炼";
+      stageEl.classList.toggle("is-final", final);
+    }
+  }
 }
 
 function paintCareBars(s) {
@@ -790,7 +833,8 @@ function paintDex(s) {
     if (!query) return true;
     return [item.id, item.nameEn, item.nameJp].some((v) => String(v || "").toLowerCase().includes(query));
   });
-  const key = JSON.stringify([query, filter, items.map((i) => [i.id, i.unlocked, i.current])]);
+  // 卡片上的「当前宠物 / 展示中」跟着出战伙伴变，重绘 key 必须带上 engineNode
+  const key = JSON.stringify([query, filter, s.partner?.engineNode?.id ?? null, items.map((i) => [i.id, i.unlocked, i.current])]);
   if (key === dexPaintKey) return;
   dexPaintKey = key;
   grid.replaceChildren();
@@ -825,7 +869,9 @@ function paintDex(s) {
     btn.dataset.args = item.id;
     // 图鉴只管看与切显示：不钉住、不停生长。钉住是管理卡的专属能力。
     btn.textContent = item.current && !isEngine ? "切回当前伙伴" : "显示这只";
-    btn.title = "只把页面切换成这只看看，不钉住、不影响生长；要钉住（暂停生长）请去「管理」。";
+    btn.title = "只把页面切换成这只看看，不改出战伙伴；要让这只吃经验请去「管理」点「设为出战」。";
+    // 一次点击就切：换视角不碰经验，不需要二次确认挡住；真正的"换人吃经验"
+    // 是管理区的「设为出战」。
     btn.addEventListener("click", () => command("pet-display", item.id));
     card.append(title, jp, status, btn);
     grid.append(card);
@@ -1122,6 +1168,13 @@ document.querySelectorAll("[data-command]").forEach((btn) => {
       command(name, btn.dataset.args);
       return;
     }
+    if (name === "pet-poll-now") {
+      // 转一圈表示正在拉，比只改按钮文字直观
+      btn.classList.add("spinning");
+      setTimeout(() => btn.classList.remove("spinning"), 1500);
+      command(name);
+      return;
+    }
     if (name === "pet-rename") {
       const value = $("pet-rename-input").value.trim().replace(/\s+/g, " ");
       if (value.length < 1 || value.length > 20) {
@@ -1132,13 +1185,13 @@ document.querySelectorAll("[data-command]").forEach((btn) => {
       return;
     }
     if (name === "pet-pin-current") {
-      // 一键钉住当前展示的这只（等于在输入框里填它的 ID 再点钉住）
+      // 「设为出战」：把当前正在看的那只（展示覆盖优先）设为吃经验的伙伴
       const id = lastState?.partner?.node?.id;
       if (!id) {
-        say("现在没有可以钉住的宠物。");
+        say("现在没有可以设为出战的宠物。");
         return;
       }
-      command("digital-pet-set", id);
+      command("pet-pin", id);
       return;
     }
     if (name === "digital-pet-set") {
