@@ -173,11 +173,13 @@ await test("state exposes default care snapshot, collection and frames after spa
   assert.equal(state.petName, null);
   assert.equal(Array.isArray(state.dex), true);
   assert.equal(state.dex.length, 650);
-  assert.equal(state.dex.filter((d) => d.unlocked).length, 1);
+  // 蛋不是宠物：当前是 Digiegg 时，图鉴里没有任何解锁项
+  assert.equal(state.dex.filter((d) => d.unlocked).length, 0);
   assert.equal(state.dex.find((d) => d.id === "0-001").current, true);
+  assert.equal(state.dex.find((d) => d.id === "0-001").unlocked, false);
 });
 
-await test("dex lists one entry per partner's current form, not the evolution history", async () => {
+await test("dex unlocks every form the save has held, eggs excluded", async () => {
   let partnerId = null;
   withRawDb(dbA, (db) => {
     partnerId = db.query("SELECT partner_id FROM partners WHERE retired_at IS NULL LIMIT 1").get().partner_id;
@@ -190,11 +192,13 @@ await test("dex lists one entry per partner's current form, not the evolution hi
 
   const state = await httpJson(serverA.port, "/api/state");
   assert.equal(state.status, 200);
-  // 过渡形态不占图鉴条目：2-001 只是进化史里的节点，从未当过当前伙伴
-  assert.equal(state.json.dex.find((d) => d.id === "2-001").unlocked, false);
-  // 蛋也不占条目，只有当前伙伴那一只是解锁的
-  assert.equal(state.json.dex.find((d) => d.id === "0-001").unlocked, true);
-  assert.equal(state.json.dex.filter((d) => d.unlocked).length, 1);
+  // 只出现在进化史里的形态也算持有过 → 解锁
+  assert.equal(state.json.dex.find((d) => d.id === "2-001").unlocked, true);
+  // 蛋（stage 0）不算宠物，不解锁
+  assert.equal(state.json.dex.find((d) => d.id === "0-001").unlocked, false);
+  const unlocked = state.json.dex.filter((d) => d.unlocked).map((d) => d.id);
+  assert.deepEqual(unlocked.sort(), ["2-001"]);
+  assert.equal(unlocked.includes("0-001"), false);
   assert.equal(state.json.partner.id, partnerId);
   assert.equal(state.json.partners.length, 1);
 });

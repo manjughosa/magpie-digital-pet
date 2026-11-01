@@ -147,8 +147,9 @@ test("dex selection, rename controls and action effects are wired", () => {
 });
 
 test("destructive spawn requires a second click and dex switch warns about pinning", () => {
-  assert.ok(js.includes("spawnConfirmUntil"), "spawn double-confirm state missing");
-  assert.ok(js.includes("再点一次确认孵新蛋"), "spawn confirmation copy missing");
+  assert.ok(js.includes("spawnArmed"), "spawn double-confirm state missing");
+  assert.ok(js.includes("再点一次确认孵蛋"), "spawn confirmation copy missing");
+  assert.ok(!js.includes("4 秒内"), "spawn confirm must not use a timeout anymore");
   assert.ok(js.includes("当前伙伴达到 baby II（含以上阶段）后才能孵下一颗蛋"), "spawn stage gate missing");
   assert.ok(js.includes("spawnBtn.disabled = stage < 2"), "spawn gate must unlock from baby II upward");
   assert.ok(html.includes('id="battle-me"'), "battle bar must name the pet that is about to evolve");

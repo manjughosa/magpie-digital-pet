@@ -1067,6 +1067,9 @@ function updateButtons() {
 
   const spawnBtn = document.querySelector('[data-command="digital-pet-spawn"]');
   if (spawnBtn) {
+    if (!spawnArmed && spawnBtn.dataset.label && spawnBtn.textContent !== spawnBtn.dataset.label) {
+      spawnBtn.textContent = spawnBtn.dataset.label;
+    }
     if (!s || !s.ok) {
       spawnBtn.disabled = true;
       spawnBtn.title = "";
@@ -1091,7 +1094,8 @@ function updateButtons() {
 // ---------- commands ----------
 
 let busy = false;
-let spawnConfirmUntil = 0;
+// 孵蛋确认：点一下待确认，再点一下才真的孵。没有倒计时，点别的按钮就取消。
+let spawnArmed = false;
 
 const commandButtons = () => document.querySelectorAll("[data-command]");
 
@@ -1151,22 +1155,22 @@ document.querySelectorAll("[data-command]").forEach((btn) => {
   btn.addEventListener("click", () => {
     const name = btn.dataset.command;
     if (name === "digital-pet-spawn") {
-      if (Date.now() > spawnConfirmUntil) {
-        spawnConfirmUntil = Date.now() + 4000;
-        btn.textContent = "再点一次确认孵新蛋";
-        say("当前宠物会退役，4 秒内再次点击确认孵新蛋。");
-        setTimeout(() => {
-          if (Date.now() > spawnConfirmUntil) {
-            btn.textContent = btn.dataset.label;
-            spawnConfirmUntil = 0;
-          }
-        }, 4100);
+      if (!spawnArmed) {
+        spawnArmed = true;
+        btn.textContent = "再点一次确认孵蛋";
+        say("再点一次「确认孵蛋」就开孵；当前伙伴会退役。点别的按钮则取消。");
         return;
       }
-      spawnConfirmUntil = 0;
+      spawnArmed = false;
       btn.textContent = btn.dataset.label;
       command(name, btn.dataset.args);
       return;
+    }
+    if (spawnArmed) {
+      // 点了别的按钮，孵化确认作废
+      spawnArmed = false;
+      const spawnButton = document.querySelector('[data-command="digital-pet-spawn"]');
+      if (spawnButton?.dataset.label) spawnButton.textContent = spawnButton.dataset.label;
     }
     if (name === "pet-poll-now") {
       // 转一圈表示正在拉，比只改按钮文字直观

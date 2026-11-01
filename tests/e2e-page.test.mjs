@@ -262,7 +262,7 @@ await test("patrol expedition starts and claims through /api/command, with histo
   const after = claim.json.state;
   assert.equal(after.expedition, null, "active expedition cleared after claim");
   assert.ok(after.collection.fragments >= fragmentsBefore + 4, "patrol pays 4 fragments");
-  assert.equal(after.care.state.bond, Math.min(100, bondBefore + 1));
+  assert.equal(after.care.state.bond, Math.min(100, bondBefore + 3));
   assert.ok(after.collection.achievements.includes("first-expedition"));
   const expeditionGoal = after.daily.goals.find((g) => g.id === "expedition");
   assert.equal(expeditionGoal.done, true);

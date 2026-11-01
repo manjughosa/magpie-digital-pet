@@ -180,7 +180,7 @@ test("claimExpedition is idempotent and a second running expedition is refused",
   const claimed = store.claimExpedition(started.expedition.expeditionId, t0 + 300_000);
   assert.equal(claimed.ok, true);
   assert.equal(claimed.reward.fragments, EXPEDITIONS.patrol.fragments);
-  assert.equal(claimed.reward.bond, 1);
+  assert.equal(claimed.reward.bond, EXPEDITIONS.patrol.bond);
   assert.equal(typeof claimed.reward.note, "string");
 
   const fragmentsAfterClaim = store.getCollection().fragments;
@@ -195,7 +195,7 @@ test("claimExpedition is idempotent and a second running expedition is refused",
 
   const snapshot = store.getCareSnapshot("p1", t0 + 600_000);
   assert.equal(snapshot.activeExpedition, null);
-  assert.equal(snapshot.state.bond, 1);
+  assert.equal(snapshot.state.bond, EXPEDITIONS.patrol.bond);
   store.close();
 });
 

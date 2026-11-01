@@ -38,9 +38,9 @@ function runningExpedition(overrides = {}) {
 
 test("EXPEDITIONS lists the three tiers with exact durations and rewards", () => {
   assert.deepEqual(EXPEDITIONS, {
-    patrol: { durationMs: 300_000, fragments: 4, bond: 1 },
-    field: { durationMs: 900_000, fragments: 10, bond: 2 },
-    night: { durationMs: 1_800_000, fragments: 18, bond: 3 },
+    patrol: { durationMs: 300_000, fragments: 4, bond: 3 },
+    field: { durationMs: 900_000, fragments: 10, bond: 4 },
+    night: { durationMs: 1_800_000, fragments: 18, bond: 5 },
   });
 });
 
