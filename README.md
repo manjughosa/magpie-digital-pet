@@ -167,13 +167,13 @@ magpie 网关 ──记账──> /v1/magpie/usage/requests
 ## 安装
 
 ```sh
-magpie plugin add E:\LLM_Config\Magpie\plugins\magpie-digital-pet
+magpie plugin add C:\Users\<你>\.config\magpie\plugins\magpie-digital-pet
 ```
 
 装好即开始记账喂食，侧边栏「宠物」页即开即用。命令行等效操作：
 
 ```sh
-cd E:\LLM_Config\Magpie\plugins\magpie-digital-pet
+cd %USERPROFILE%\.config\magpie\plugins\magpie-digital-pet
 bun cli\pet-cli.mjs status     # 当前进度、进化百分比（与侧边栏页同源），另附只读养成摘要：
                                # care / bond / fragments / expedition
 bun cli\pet-cli.mjs spawn      # 获取新的蛋（当前伙伴会退役）

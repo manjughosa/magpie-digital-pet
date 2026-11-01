@@ -720,8 +720,23 @@ function paintHero(s) {
     : !showingOther && s.petName
       ? (jp && jp !== p.node.nameEn ? `${p.node.nameEn} · ${jp}` : p.node.nameEn)
       : jp;
+  // 命名只对「在役那只」有效：展示别人时清空并禁用，免得旧名字赖在输入框里
   const renameInput = $("pet-rename-input");
-  if (renameInput && document.activeElement !== renameInput) renameInput.value = s.petName || "";
+  const renameBtn = document.querySelector('[data-command="pet-rename"]');
+  const canRename = !showingOther && !isEgg;
+  if (renameInput) {
+    renameInput.disabled = !canRename;
+    renameInput.placeholder = canRename ? "给它起个名字" : showingOther ? "只能给在役伙伴命名" : "孵出来再取名";
+    if (!canRename) {
+      renameInput.value = "";
+    } else if (document.activeElement !== renameInput) {
+      renameInput.value = s.petName || "";
+    }
+  }
+  if (renameBtn) {
+    renameBtn.disabled = !canRename;
+    renameBtn.title = canRename ? "" : "只能给在役伙伴命名";
+  }
   // 阶段徽章跟着展示的那只走：gen 也一起换
   $("pet-stage-badge").textContent = isEgg
     ? `gen ${p.generation ?? "?"} · ????`

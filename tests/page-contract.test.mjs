@@ -169,6 +169,7 @@ test("destructive spawn requires a second click and dex switch warns about pinni
   }
   assert.ok(js.includes('" visited"'), "history-only forms must get their own card style");
   assert.ok(html.includes('id="dex-count"'), "dex needs the visible counter");
+  assert.ok(js.includes('renameInput.disabled = !canRename'), "rename field must be cleared/disabled when viewing another pet");
   assert.ok(html.includes('id="hero-pin"'), "name row needs the quick 出战 button");
   assert.ok(html.includes('id="hero-poll"'), "name row needs the instant-refresh button");
   assert.ok(js.includes('classList.add("spinning")'), "refresh button must show it is polling");
