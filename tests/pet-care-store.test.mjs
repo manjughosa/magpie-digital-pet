@@ -82,7 +82,7 @@ test("reopening the database runs migrations once and keeps data", () => {
     .all()
     .map((row) => row.name);
   raw.close();
-  assert.equal(version, 3);
+  assert.equal(version, 4);
   assert.ok(columns.includes("cooldown_pet"), "v3 migration must add cooldown_pet");
   assert.deepEqual(tables, [
     "magpie_pet_achievements",
