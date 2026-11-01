@@ -9,6 +9,7 @@ import { join } from "node:path";
 import { Database } from "bun:sqlite";
 
 import { createCareStore, DECORATIONS, DAILY_GOAL_REWARDS } from "../lib/pet.care-store.mjs";
+import { EXPEDITIONS } from "../lib/pet.care-rules.mjs";
 
 let failures = 0;
 function test(name, fn) {
@@ -178,7 +179,7 @@ test("claimExpedition is idempotent and a second running expedition is refused",
 
   const claimed = store.claimExpedition(started.expedition.expeditionId, t0 + 300_000);
   assert.equal(claimed.ok, true);
-  assert.equal(claimed.reward.fragments, 3);
+  assert.equal(claimed.reward.fragments, EXPEDITIONS.patrol.fragments);
   assert.equal(claimed.reward.bond, 1);
   assert.equal(typeof claimed.reward.note, "string");
 
@@ -249,10 +250,10 @@ test("equipDecoration refuses unknown ids and never spends fragments when insuff
   assert.equal(unknown.ok, false);
   assert.equal(unknown.reason, "unknown-decoration");
 
-  // One patrol claim: 3 fragments reward + daily expedition goal reward.
+  // One patrol claim + the daily expedition goal — still short of the cheapest theme.
   const started = store.startExpedition("p1", "patrol", t0);
   store.claimExpedition(started.expedition.expeditionId, t0 + 300_000);
-  const balance = 3 + DAILY_GOAL_REWARDS.expedition;
+  const balance = EXPEDITIONS.patrol.fragments + DAILY_GOAL_REWARDS.expedition;
   assert.equal(store.getCollection().fragments, balance);
   assert.equal(balance < DECORATIONS.meadow.price, true);
 
@@ -261,16 +262,17 @@ test("equipDecoration refuses unknown ids and never spends fragments when insuff
   assert.equal(poor.reason, "insufficient-fragments");
   assert.equal(store.getCollection().fragments, balance);
 
-  // A field expedition adds 8 fragments; meadow now fits.
-  const second = store.startExpedition("p1", "field", t0 + 300_001);
-  store.claimExpedition(second.expedition.expeditionId, t0 + 300_001 + 900_000);
-  assert.equal(store.getCollection().fragments, balance + 8);
+  // A night expedition adds enough for the meadow theme.
+  const second = store.startExpedition("p1", "night", t0 + 300_001);
+  store.claimExpedition(second.expedition.expeditionId, t0 + 300_001 + EXPEDITIONS.night.durationMs);
+  assert.equal(store.getCollection().fragments, balance + EXPEDITIONS.night.fragments);
+  assert.ok(balance + EXPEDITIONS.night.fragments >= DECORATIONS.meadow.price);
 
   const equipped = store.equipDecoration("meadow");
   assert.equal(equipped.ok, true);
   assert.equal(equipped.equippedTheme, "meadow");
   const collection = store.getCollection();
-  assert.equal(collection.fragments, balance + 8 - DECORATIONS.meadow.price);
+  assert.equal(collection.fragments, balance + EXPEDITIONS.night.fragments - DECORATIONS.meadow.price);
   assert.deepEqual(collection.unlocked, ["meadow"]);
   assert.equal(collection.equippedTheme, "meadow");
 

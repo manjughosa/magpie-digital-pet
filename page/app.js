@@ -101,14 +101,14 @@ let override = null; // { names: string[], until: number }
 
 const EXPEDITION_LABELS = { patrol: "短巡逻", field: "数据原野", night: "深夜远征" };
 const DECORATION_PRICES = {
-  meadow: 10,
-  night: 25,
-  terminal: 40,
-  ocean: 60,
-  sunset: 80,
-  snow: 120,
-  sakura: 160,
-  void: 200,
+  meadow: 20,
+  night: 50,
+  terminal: 80,
+  ocean: 120,
+  sunset: 160,
+  snow: 240,
+  sakura: 320,
+  void: 400,
 };
 const GOAL_LABELS = {
   care: "照顾宠物 2 次",
