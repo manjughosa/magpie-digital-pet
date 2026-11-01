@@ -811,6 +811,11 @@ function paintDaily(s) {
 function paintCollection(s) {
   const c = s.ok ? s.collection : null;
   $("fragments").textContent = String(c?.fragments ?? 0);
+  const todayEl = $("fragment-today");
+  if (todayEl) {
+    todayEl.textContent =
+      c && typeof c.earnedToday === "number" ? `（今日 ${c.earnedToday} / ${c.dailyCap ?? 240}）` : "";
+  }
   const total = 6;
   const got = c?.achievements?.length ?? 0;
   $("achievements").textContent = `成就 ${got}/${total}`;

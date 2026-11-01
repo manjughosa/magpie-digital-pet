@@ -8,7 +8,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Database } from "bun:sqlite";
 
-import { createCareStore, DECORATIONS, DAILY_GOAL_REWARDS } from "../lib/pet.care-store.mjs";
+import { createCareStore, DECORATIONS, DAILY_GOAL_REWARDS, DAILY_FRAGMENT_CAP } from "../lib/pet.care-store.mjs";
 import { EXPEDITIONS } from "../lib/pet.care-rules.mjs";
 
 let failures = 0;
@@ -90,6 +90,7 @@ test("reopening the database runs migrations once and keeps data", () => {
     "magpie_pet_care_state",
     "magpie_pet_daily",
     "magpie_pet_expeditions",
+    "magpie_pet_fragment_daily",
     "magpie_pet_inventory",
     "magpie_pet_names",
   ]);
@@ -280,6 +281,48 @@ test("equipDecoration refuses unknown ids and never spends fragments when insuff
   const again = store.equipDecoration("meadow");
   assert.equal(again.ok, true);
   assert.equal(store.getCollection().fragments, collection.fragments);
+  store.close();
+});
+
+test("fragments stop at the daily cap, spending is not limited", () => {
+  const dbPath = freshDbPath();
+  const store = createCareStore({ databasePath: dbPath });
+  const t0 = Date.now();
+  const night = EXPEDITIONS.night.durationMs;
+
+  // 先正常领一次，让当日计数行落库
+  const first = store.startExpedition("p1", "night", t0);
+  store.claimExpedition(first.expedition.expeditionId, t0 + night);
+  // 探险 18 + 顺手完成的「探险 1 次」每日目标 6
+  assert.equal(store.getCollection().earnedToday, EXPEDITIONS.night.fragments + DAILY_GOAL_REWARDS.expedition);
+
+  // 把「今日已得」直接顶到 230，再领 18：只能拿到 10
+  const raw = new Database(dbPath);
+  raw.run("UPDATE magpie_pet_fragment_daily SET earned = 230");
+  raw.close();
+
+  const before = store.getCollection().fragments;
+  const second = store.startExpedition("p1", "night", t0 + 2_000_000);
+  const claim = store.claimExpedition(second.expedition.expeditionId, t0 + 2_000_000 + night);
+  assert.equal(claim.ok, true);
+  assert.equal(claim.reward.fragments, 10);
+  assert.equal(claim.reward.capped, true);
+  assert.equal(store.getCollection().earnedToday, DAILY_FRAGMENT_CAP);
+  assert.equal(store.getCollection().fragments, before + 10);
+
+  // 到顶之后再领，实发 0
+  const third = store.startExpedition("p1", "night", t0 + 4_000_000);
+  const capped = store.claimExpedition(third.expedition.expeditionId, t0 + 4_000_000 + night);
+  assert.equal(capped.ok, true);
+  assert.equal(capped.reward.fragments, 0);
+  assert.equal(capped.reward.capped, true);
+  assert.equal(store.getCollection().fragments, before + 10);
+
+  // 花碎片不受上限影响
+  const wallet = store.getCollection().fragments;
+  const equipped = store.equipDecoration("meadow");
+  assert.equal(equipped.ok, true);
+  assert.equal(store.getCollection().fragments, wallet - DECORATIONS.meadow.price);
   store.close();
 });
 
