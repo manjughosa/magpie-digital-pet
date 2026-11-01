@@ -29,4 +29,11 @@ Frame semantics (idle/walk/attack/happy/eat/sleep/injured) are decoded from
 the omnipet sprite atlas convention. Species without a PNG mapping continue
 to use the Apache-2.0 text frames or the procedural fallback.
 
+The plugin's icon (magpie.icon in package.json, and page/cover.png) is a
+derived crop of the official Agumon profile art published on digimon.net
+(https://digimon.net/cimages/digimon/agumon.jpg), composed onto a gradient
+background. Digimon and all associated characters are trademarks of Bandai
+and Toei Animation; the art is not covered by this package's Apache-2.0
+license and is included only as a small identifying icon.
+
 Licensed under the Apache License, Version 2.0 (see LICENSE).
