@@ -43,8 +43,13 @@ function cleanup() {
 }
 process.on("exit", cleanup);
 
-test("decoration catalog exposes eight fixed ids with explicit prices", () => {
+test("decoration catalog exposes fifteen fixed ids with explicit prices", () => {
   assert.deepEqual(Object.keys(DECORATIONS).sort(), [
+    "castle",
+    "coast",
+    "factory",
+    "forest",
+    "gear",
     "meadow",
     "night",
     "ocean",
@@ -52,10 +57,14 @@ test("decoration catalog exposes eight fixed ids with explicit prices", () => {
     "snow",
     "sunset",
     "terminal",
+    "tunnel",
+    "village",
     "void",
   ]);
+  // 开局场景免费
+  assert.equal(DECORATIONS.village.price, 0);
   for (const def of Object.values(DECORATIONS)) {
-    assert.equal(Number.isInteger(def.price) && def.price > 0, true);
+    assert.equal(Number.isInteger(def.price) && def.price >= 0, true);
   }
 });
 
@@ -82,13 +91,14 @@ test("reopening the database runs migrations once and keeps data", () => {
     .all()
     .map((row) => row.name);
   raw.close();
-  assert.equal(version, 4);
+  assert.equal(version, 5);
   assert.ok(columns.includes("cooldown_pet"), "v3 migration must add cooldown_pet");
   assert.deepEqual(tables, [
     "magpie_pet_achievements",
     "magpie_pet_care_events",
     "magpie_pet_care_state",
     "magpie_pet_daily",
+    "magpie_pet_egg_gate",
     "magpie_pet_expeditions",
     "magpie_pet_fragment_daily",
     "magpie_pet_inventory",
@@ -243,6 +253,15 @@ test("store works on a database without the upstream tables", () => {
   store.close();
 });
 
+test("a fresh save ships with the village scene owned and equipped", () => {
+  const store = createCareStore({ databasePath: freshDbPath() });
+  const collection = store.getCollection();
+  assert.deepEqual(collection.unlocked, ["village"]);
+  assert.equal(collection.equippedTheme, "village");
+  assert.equal(collection.fragments, 0);
+  store.close();
+});
+
 test("equipDecoration refuses unknown ids and never spends fragments when insufficient", () => {
   const store = createCareStore({ databasePath: freshDbPath() });
   const t0 = 1_000_000;
@@ -274,7 +293,7 @@ test("equipDecoration refuses unknown ids and never spends fragments when insuff
   assert.equal(equipped.equippedTheme, "meadow");
   const collection = store.getCollection();
   assert.equal(collection.fragments, balance + EXPEDITIONS.night.fragments - DECORATIONS.meadow.price);
-  assert.deepEqual(collection.unlocked, ["meadow"]);
+  assert.deepEqual(collection.unlocked, ["meadow", "village"]);
   assert.equal(collection.equippedTheme, "meadow");
 
   // Re-equipping an unlocked decoration is free.

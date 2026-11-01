@@ -180,14 +180,21 @@ section {
 
 /* 装饰主题变体：像素背景图（page/backgrounds/*.webp）
    每个主题都是一张整图；不再叠渐变，也不再按明暗主题换色。 */
+.habitat--village .sky,
 .habitat--meadow .sky,
 .habitat--night .sky,
+.habitat--gear .sky,
 .habitat--terminal .sky,
 .habitat--ocean .sky,
+.habitat--coast .sky,
 .habitat--sunset .sky,
 .habitat--snow .sky,
+.habitat--forest .sky,
+.habitat--tunnel .sky,
 .habitat--sakura .sky,
-.habitat--void .sky {
+.habitat--factory .sky,
+.habitat--void .sky,
+.habitat--castle .sky {
   background-position: center;
   background-size: cover;
   background-repeat: no-repeat;
@@ -200,6 +207,13 @@ section {
 .habitat--snow .sky { background-image: url("backgrounds/snow.webp"); }
 .habitat--sakura .sky { background-image: url("backgrounds/sakura.webp"); }
 .habitat--void .sky { background-image: url("backgrounds/void.webp"); }
+.habitat--village .sky { background-image: url("backgrounds/village.webp"); }
+.habitat--gear .sky { background-image: url("backgrounds/gear.webp"); }
+.habitat--coast .sky { background-image: url("backgrounds/coast.webp"); }
+.habitat--forest .sky { background-image: url("backgrounds/forest.webp"); }
+.habitat--tunnel .sky { background-image: url("backgrounds/tunnel.webp"); }
+.habitat--factory .sky { background-image: url("backgrounds/factory.webp"); }
+.habitat--castle .sky { background-image: url("backgrounds/castle.webp"); }
 /* 终端主题保留一层很淡的扫描线，别盖住画面 */
 .habitat--terminal .sky::after {
   content: "";
@@ -385,6 +399,19 @@ section {
   color: var(--muted);
   font-size: 10.5px;
   line-height: 1.35;
+}
+
+/* 装饰：15 套排成网格，别堆成一长条按钮 */
+.deco-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 6px;
+}
+.deco-grid button { width: 100%; padding: 6px 8px; font-size: 12px; }
+.deco-grid button.equipped {
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent) inset;
 }
 
 /* ---------------- 状态条 ---------------- */

@@ -134,19 +134,28 @@
         <p class="small muted hint" id="actions-hint"></p>
       </section>
 
-      <section id="expedition" aria-label="探险">
-        <h2>探险</h2>
-        <p class="small" id="expedition-status">还没有进行中的探险。</p>
-        <div class="btn-row">
-          <button type="button" data-command="pet-expedition-start" data-args="patrol">短巡逻 · 5 分钟</button>
-          <button type="button" data-command="pet-expedition-start" data-args="field">数据原野 · 15 分钟</button>
-          <button type="button" data-command="pet-expedition-start" data-args="night">深夜远征 · 30 分钟</button>
-          <button type="button" data-command="pet-expedition-claim" class="primary" id="btn-claim" hidden>领取探险奖励</button>
+      <section id="collection" aria-label="收藏与装饰">
+        <h2>收藏与装饰</h2>
+        <p class="small">数据碎片：<b id="fragments">0</b> <span class="muted" id="fragment-today"></span> · <span class="muted" id="achievements"></span></p>
+        <div class="deco-grid">
+          <button type="button" data-command="pet-decoration-equip" data-args="village">阳光村落 · 0 碎片</button>
+          <button type="button" data-command="pet-decoration-equip" data-args="meadow">初始原野 · 20 碎片</button>
+          <button type="button" data-command="pet-decoration-equip" data-args="night">月见之丘 · 50 碎片</button>
+          <button type="button" data-command="pet-decoration-equip" data-args="gear">齿轮草原 · 75 碎片</button>
+          <button type="button" data-command="pet-decoration-equip" data-args="terminal">数据神殿 · 80 碎片</button>
+          <button type="button" data-command="pet-decoration-equip" data-args="ocean">网络之海 · 120 碎片</button>
+          <button type="button" data-command="pet-decoration-equip" data-args="coast">黄昏海岸 · 140 碎片</button>
+          <button type="button" data-command="pet-decoration-equip" data-args="sunset">失落遗迹 · 160 碎片</button>
+          <button type="button" data-command="pet-decoration-equip" data-args="snow">永冬雪原 · 240 碎片</button>
+          <button type="button" data-command="pet-decoration-equip" data-args="forest">幽暗密林 · 280 碎片</button>
+          <button type="button" data-command="pet-decoration-equip" data-args="tunnel">悬浮隧道 · 300 碎片</button>
+          <button type="button" data-command="pet-decoration-equip" data-args="sakura">樱之神社 · 320 碎片</button>
+          <button type="button" data-command="pet-decoration-equip" data-args="factory">废弃工厂 · 360 碎片</button>
+          <button type="button" data-command="pet-decoration-equip" data-args="void">星海尽头 · 400 碎片</button>
+          <button type="button" data-command="pet-decoration-equip" data-args="castle">丑皇暗堡 · 520 碎片</button>
         </div>
       </section>
-    </div>
 
-    <aside class="hud-side" style="display:contents">
       <section id="manage" aria-label="管理">
         <h2>管理</h2>
         <div class="btn-row">
@@ -162,21 +171,19 @@
         </div>
       </section>
 
-      <section id="collection" aria-label="收藏与装饰">
-        <h2>收藏与装饰</h2>
-        <p class="small">数据碎片：<b id="fragments">0</b> <span class="muted" id="fragment-today"></span> · <span class="muted" id="achievements"></span></p>
+      <section id="expedition" aria-label="探险">
+        <h2>探险</h2>
+        <p class="small" id="expedition-status">还没有进行中的探险。</p>
         <div class="btn-row">
-          <button type="button" data-command="pet-decoration-equip" data-args="meadow">草原背景 · 20 碎片</button>
-          <button type="button" data-command="pet-decoration-equip" data-args="night">夜空背景 · 50 碎片</button>
-          <button type="button" data-command="pet-decoration-equip" data-args="terminal">终端背景 · 80 碎片</button>
-          <button type="button" data-command="pet-decoration-equip" data-args="ocean">海洋背景 · 120 碎片</button>
-          <button type="button" data-command="pet-decoration-equip" data-args="sunset">遗迹背景 · 160 碎片</button>
-          <button type="button" data-command="pet-decoration-equip" data-args="snow">雪原背景 · 240 碎片</button>
-          <button type="button" data-command="pet-decoration-equip" data-args="sakura">樱色背景 · 320 碎片</button>
-          <button type="button" data-command="pet-decoration-equip" data-args="void">虚空背景 · 400 碎片</button>
+          <button type="button" data-command="pet-expedition-start" data-args="patrol">短巡逻 · 5 分钟</button>
+          <button type="button" data-command="pet-expedition-start" data-args="field">数据原野 · 15 分钟</button>
+          <button type="button" data-command="pet-expedition-start" data-args="night">深夜远征 · 30 分钟</button>
+          <button type="button" data-command="pet-expedition-claim" class="primary" id="btn-claim" hidden>领取探险奖励</button>
         </div>
       </section>
+    </div>
 
+    <aside class="hud-side" style="display:contents">
       <section id="daily-goals" aria-label="每日目标">
         <h2>每日目标</h2>
         <ul class="goal-list" id="daily-list"></ul>

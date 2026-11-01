@@ -163,8 +163,9 @@ await test("state exposes default care snapshot, collection and frames after spa
   assert.equal(state.daily.goals.length, 3);
 
   assert.equal(state.collection.fragments, 0);
-  assert.deepEqual(state.collection.unlocked, []);
-  assert.equal(state.collection.equippedTheme, null);
+  // 新存档自带「阳光村落」
+  assert.deepEqual(state.collection.unlocked, ["village"]);
+  assert.equal(state.collection.equippedTheme, "village");
 
   // 帧目录已从上游 TUI 包恢复：当前物种应带一组具名像素帧
   assert.equal(typeof state.frame?.content, "string");
@@ -683,32 +684,23 @@ await test("pin chooses which partner grows; unpin falls back to the first partn
   }
 });
 
-await test("spawn unlocks from baby II upward, is rate limited, and hands out an unknown egg", async () => {
-  const tooEarly = await httpJson(serverA.port, "/api/command", {
+await test("spawn is gated by the egg counter alone and hands out an unknown egg", async () => {
+  // 开局（伙伴还是蛋）→ 计数器 0，没变化过，不给
+  const first = await httpJson(serverA.port, "/api/command", {
     method: "POST",
     body: { name: "digital-pet-spawn" },
   });
-  assert.equal(tooEarly.status, 400);
-  assert.equal(tooEarly.json.reason, "stage-required");
+  assert.equal(first.status, 400);
+  assert.equal(first.json.reason, "egg-counter-unchanged");
 
-  // baby I is still below the gate
+  // 把这只养到 baby II（计数器 0 → 2）就解锁一次
   withRawDb(dbA, (db) => {
-    db.run("UPDATE partners SET current_node_id = '1-001' WHERE retired_at IS NULL");
+    db.run("UPDATE partners SET current_node_id = '2-001' WHERE retired_at IS NULL");
   });
-  const stillEarly = await httpJson(serverA.port, "/api/command", {
-    method: "POST",
-    body: { name: "digital-pet-spawn" },
-  });
-  assert.equal(stillEarly.status, 400);
-  assert.equal(stillEarly.json.reason, "stage-required");
+  const before = await httpJson(serverA.port, "/api/state");
+  assert.equal(before.json.eggCounter, 2);
+  assert.equal(before.json.eggReady, true);
 
-  // child (stage 3) is above baby II and must stay unlocked
-  withRawDb(dbA, (db) => {
-    db.run(
-      "UPDATE partners SET current_node_id = '3-001', created_at = ? WHERE retired_at IS NULL",
-      new Date(Date.now() - 120_000).toISOString(),
-    );
-  });
   const spawn = await httpJson(serverA.port, "/api/command", {
     method: "POST",
     body: { name: "digital-pet-spawn" },
@@ -716,14 +708,30 @@ await test("spawn unlocks from baby II upward, is rate limited, and hands out an
   assert.equal(spawn.status, 200);
   const state = spawn.json.state;
   assert.equal(state.partner.generation, 2);
-  // 新拿到的就是一颗蛋：形态未知，等着喂够 token 才孵出 baby I
-  assert.equal(state.partner.node.id, "0-001");
+  assert.equal(state.partner.node.id, "0-001", "新拿到的就是一颗未知的蛋");
   assert.equal(state.partner.node.stage, 0);
   assert.equal(state.partner.gauge, 0);
   assert.equal(state.partner.battle, null);
   assert.equal(state.care.state.partnerId, state.partner.id);
-  assert.ok(Math.abs(state.care.state.satiety - 72) < 0.1);
-  assert.ok(Math.abs(state.care.state.bond - 0) < 0.1);
+
+  // 领完快照，计数器没再动 → 不给第二颗
+  const again = await httpJson(serverA.port, "/api/command", {
+    method: "POST",
+    body: { name: "digital-pet-spawn" },
+  });
+  assert.equal(again.status, 400);
+  assert.equal(again.json.reason, "egg-counter-unchanged");
+
+  // 让上一代再进化一次（2 → 3），计数器变化 → 又给一颗
+  withRawDb(dbA, (db) => {
+    db.run("UPDATE partners SET current_node_id = '3-001' WHERE partner_id = 'partner-1'");
+  });
+  const third = await httpJson(serverA.port, "/api/command", {
+    method: "POST",
+    body: { name: "digital-pet-spawn" },
+  });
+  assert.equal(third.status, 200);
+  assert.equal(third.json.state.partner.node.id, "0-001");
 });
 
 await test("static files are confined to the page directory", async () => {

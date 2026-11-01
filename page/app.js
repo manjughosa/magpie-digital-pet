@@ -101,14 +101,21 @@ let override = null; // { names: string[], until: number }
 
 const EXPEDITION_LABELS = { patrol: "短巡逻", field: "数据原野", night: "深夜远征" };
 const DECORATION_PRICES = {
+  village: 0,
   meadow: 20,
   night: 50,
+  gear: 75,
   terminal: 80,
   ocean: 120,
+  coast: 140,
   sunset: 160,
   snow: 240,
+  forest: 280,
+  tunnel: 300,
   sakura: 320,
+  factory: 360,
   void: 400,
+  castle: 520,
 };
 const GOAL_LABELS = {
   care: "照顾宠物 2 次",
@@ -827,7 +834,7 @@ function paintCollection(s) {
     btn.classList.toggle("equipped", equipped === id);
     if (equipped === id) btn.textContent = `${btn.dataset.label || ""} · 已装备`;
     else if (unlocked.has(id)) btn.textContent = `${btn.dataset.label || ""} · 点击装备`;
-    else btn.textContent = `${btn.dataset.label || ""} · ${price} 碎片`;
+    else btn.textContent = price > 0 ? `${btn.dataset.label || ""} · ${price} 碎片` : `${btn.dataset.label || ""} · 免费`;
   });
 }
 
@@ -1126,12 +1133,12 @@ function updateButtons() {
       spawnBtn.disabled = false;
       spawnBtn.title = "孵出第一颗蛋";
     } else {
-      const stage = partner.engineNode?.stage ?? partner.node?.stage ?? 0;
-      // baby II 及以上（stage 2+）才能获取新的蛋；进化到更高阶段不会重新锁上
-      spawnBtn.disabled = stage < 2;
-      spawnBtn.title = stage < 2
-        ? "当前伙伴达到 baby II（含以上阶段）后才能获取新的蛋"
-        : "当前伙伴会退役，需要二次确认";
+      // 只有一道门：孵蛋条件计数器要比上次领蛋时更大（这期间真的进化过）
+      const ready = s.eggReady !== false;
+      spawnBtn.disabled = !ready;
+      spawnBtn.title = ready
+        ? "当前伙伴会退役，需要二次确认"
+        : `孵蛋条件计数器没变化（${s.eggCounter ?? 0}，上次领蛋时 ${s.eggSnapshot ?? 0}）：先让一只伙伴进化`;
     }
   }
 

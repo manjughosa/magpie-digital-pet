@@ -100,9 +100,12 @@ test("expedition and decoration buttons carry static data-args", () => {
     assert.ok(/\bdata-args="(patrol|field|night)"/.test(btn), `expedition button needs data-args: ${btn}`);
   }
   const decorations = [...html.matchAll(/<button\b[^>]*data-command="pet-decoration-equip"[^>]*>/g)];
-  assert.ok(decorations.length >= 8, "expected 8 decorations");
+  assert.ok(decorations.length >= 15, "expected 15 decorations");
   for (const [btn] of decorations) {
-    assert.ok(/\bdata-args="(meadow|night|terminal|ocean|sunset|snow|sakura|void)"/.test(btn), `decoration button needs data-args: ${btn}`);
+    assert.ok(
+      /\bdata-args="(village|meadow|night|gear|terminal|ocean|coast|sunset|snow|forest|tunnel|sakura|factory|void|castle)"/.test(btn),
+      `decoration button needs data-args: ${btn}`,
+    );
   }
 });
 
@@ -150,8 +153,8 @@ test("destructive spawn requires a second click and dex switch warns about pinni
   assert.ok(js.includes("spawnArmed"), "spawn double-confirm state missing");
   assert.ok(js.includes("再点一次确认获取新的蛋"), "spawn confirmation copy missing");
   assert.ok(!js.includes("4 秒内"), "spawn confirm must not use a timeout anymore");
-  assert.ok(js.includes("当前伙伴达到 baby II（含以上阶段）后才能获取新的蛋"), "spawn stage gate missing");
-  assert.ok(js.includes("spawnBtn.disabled = stage < 2"), "spawn gate must unlock from baby II upward");
+  assert.ok(js.includes("孵蛋条件计数器没变化"), "spawn gate must be the egg counter");
+  assert.ok(js.includes("spawnBtn.disabled = !ready"), "spawn gate must be the egg counter only");
   assert.ok(html.includes('id="battle-me"'), "battle bar must name the pet that is about to evolve");
   assert.ok(js.includes('$("battle-me").textContent'), "battle bar must fill that name from state");
   for (const tone of ["vaccine", "data", "virus"]) {
