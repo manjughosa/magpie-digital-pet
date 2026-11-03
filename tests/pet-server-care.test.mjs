@@ -236,6 +236,13 @@ await test("care commands mutate state, return {text,toasts,state} and respect c
   // 72 + 10, minus a few milliseconds of decay before the snapshot
   assert.ok(fed.json.state.care.state.satiety > 81.9 && fed.json.state.care.state.satiety <= 82);
 
+  for (let i = 0; i < 3; i += 1) {
+    const more = await httpJson(serverA.port, "/api/command", {
+      method: "POST",
+      body: { name: "pet-feed-snack" },
+    });
+    assert.equal(more.status, 200);
+  }
   const again = await httpJson(serverA.port, "/api/command", {
     method: "POST",
     body: { name: "pet-feed-snack" },
@@ -258,6 +265,44 @@ await test("care commands mutate state, return {text,toasts,state} and respect c
   assert.equal(unknown.status, 400);
   assert.equal(typeof unknown.json.error, "string");
   assert.equal(typeof unknown.json.reason, "string");
+});
+
+await test("reset care uses costs two fragments, clears cooldowns, and refuses empty or unpaid resets", async () => {
+  withRawDb(dbA, (db) => {
+    db.run(
+      "INSERT INTO magpie_pet_inventory (item_id, kind, quantity, equipped) VALUES ('fragments', 'currency', 2, 0) ON CONFLICT(item_id) DO UPDATE SET quantity = 2",
+    );
+  });
+  const reset = await httpJson(serverA.port, "/api/command", {
+    method: "POST",
+    body: { name: "pet-reset-care-uses" },
+  });
+  assert.equal(reset.status, 200);
+  assert.equal(reset.json.state.collection.fragments, 0);
+  assert.equal(reset.json.state.care.state.cooldowns.snack, 0);
+  assert.deepEqual(reset.json.state.care.state.burstUses, { snack: 0, play: 0 });
+
+  const noop = await httpJson(serverA.port, "/api/command", {
+    method: "POST",
+    body: { name: "pet-reset-care-uses" },
+  });
+  assert.equal(noop.status, 400);
+  assert.equal(noop.json.reason, "nothing-to-reset");
+
+  const oneSnack = await httpJson(serverA.port, "/api/command", {
+    method: "POST",
+    body: { name: "pet-feed-snack" },
+  });
+  assert.equal(oneSnack.status, 200);
+  const poor = await httpJson(serverA.port, "/api/command", {
+    method: "POST",
+    body: { name: "pet-reset-care-uses" },
+  });
+  assert.equal(poor.status, 400);
+  assert.equal(poor.json.reason, "insufficient-fragments");
+  const after = await httpJson(serverA.port, "/api/state");
+  assert.equal(after.json.collection.fragments, 0);
+  assert.equal(after.json.care.state.burstUses.snack, 1);
 });
 
 await test("pet-pet-egg is rejected with HTTP 400 once the partner leaves the egg stage", async () => {

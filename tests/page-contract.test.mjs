@@ -85,6 +85,7 @@ test("all pet-* and digital-pet-* commands have buttons", () => {
     "pet-clean",
     "pet-rest",
     "pet-pet-egg",
+    "pet-reset-care-uses",
     "pet-expedition-start",
     "pet-expedition-claim",
     "pet-decoration-equip",
@@ -97,6 +98,19 @@ test("all pet-* and digital-pet-* commands have buttons", () => {
   ]) {
     assert.ok(commands.has(name), `missing button for ${name}`);
   }
+});
+
+test("care reset sits in the daily-care header and requires a second click", () => {
+  const section = html.match(/<section id="actions"[\s\S]*?<\/section>/)?.[0] ?? "";
+  assert.match(section, /class="section-head"[\s\S]*?<h2>日常照顾<\/h2>[\s\S]*?id="btn-reset-care-uses"/);
+  const button = section.match(/<button[^>]*id="btn-reset-care-uses"[\s\S]*?<\/button>/)?.[0] ?? "";
+  assert.match(button, /data-command="pet-reset-care-uses"/);
+  assert.match(button, /data-confirm="1"/);
+  assert.match(button, /data-confirm-label="再点一次确认"/);
+  assert.match(button, /data-confirm-message="[^"]*消耗 2 个数据碎片/);
+  assert.match(js, /btn\.dataset\.confirmLabel/);
+  assert.match(js, /btn\.dataset\.armed = "1"/);
+  assert.match(css, /\.section-head\s*\{/);
 });
 
 test("expedition and decoration buttons carry static data-args", () => {

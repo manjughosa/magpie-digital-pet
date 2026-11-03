@@ -1131,8 +1131,35 @@ function paint(s) {
 
 // ---------- buttons: cooldown / availability ----------
 
-const careButtons = () => [...document.querySelectorAll("#actions [data-command]")];
+const careButtons = () => [...document.querySelectorAll("#actions .btn-grid [data-command]")];
 const expeditionStartButtons = () => [...document.querySelectorAll('[data-command="pet-expedition-start"]')];
+
+function updateResetCareButton(s, partner, expRunning, now) {
+  const btn = $("btn-reset-care-uses");
+  if (!btn) return;
+  const care = s?.ok ? s.care?.state : null;
+  const fragments = s?.ok ? Number(s.collection?.fragments ?? 0) : 0;
+  const uses = care?.burstUses ?? {};
+  const cooldowns = care?.cooldowns ?? {};
+  const hasUses = (uses.snack ?? 0) > 0 || (uses.play ?? 0) > 0;
+  const hasCooldown = (cooldowns.snack ?? 0) > now || (cooldowns.play ?? 0) > now;
+  const hasNeed = hasUses || hasCooldown;
+
+  btn.disabled = !s?.ok || !partner || expRunning || !hasNeed || fragments < 2;
+  if (!s?.ok) btn.title = "状态还没读到";
+  else if (!partner) btn.title = "先孵一颗蛋，再来照顾它";
+  else if (expRunning) btn.title = "探险中，等它回来吧";
+  else if (!hasNeed) btn.title = "当前没有可重置的照顾次数";
+  else if (fragments < 2) btn.title = "数据碎片不足，需要 2 个";
+  else btn.title = "消耗 2 个数据碎片，恢复点心和玩耍的可用次数";
+
+  const note = btn.querySelector(".muted");
+  if (note && btn.dataset.armed !== "1") {
+    const label = !hasNeed ? "无需重置" : fragments < 2 ? "碎片不足" : "2 碎片";
+    note.textContent = label;
+    btn.dataset.note = label;
+  }
+}
 
 function updateButtons() {
   const s = lastState;
@@ -1188,6 +1215,7 @@ function updateButtons() {
     btn.textContent = base;
     btn.title = withTip();
   }
+  updateResetCareButton(s, partner, expRunning, now);
   if (!s || !s.ok) hint.textContent = "";
   else if (!partner) hint.textContent = "先孵一颗蛋，再来照顾它。";
   else if (expRunning) hint.textContent = "它出门探险了，回来再照顾吧。";
@@ -1306,11 +1334,13 @@ function disarmConfirm() {
   if (!armedConfirm) return;
   const { btn } = armedConfirm;
   armedConfirm = null;
+  if (btn) delete btn.dataset.armed;
   const note = btn?.querySelector(".muted");
   if (note && btn?.dataset.note) note.textContent = btn.dataset.note;
 }
 function armConfirm(btn, step, text) {
   armedConfirm = { btn, step };
+  btn.dataset.armed = "1";
   const note = btn.querySelector(".muted");
   if (note) note.textContent = text;
 }
@@ -1460,8 +1490,14 @@ document.querySelectorAll("[data-command]").forEach((btn) => {
       }
       if (armedConfirm?.btn === btn) return; // 确认框已经开着：再点不重复触发
       disarmConfirm();
-      armConfirm(btn, 1, twoStep ? "再点一次：切成作弊 ×0.01" : "是否选择获取全部宠物？再点一下继续");
-      say(twoStep ? "再点一次就切成作弊档（经验槽 ×0.01）。" : "是否选择获取全部宠物？再点一下才会看到后果。");
+      const confirmLabel =
+        btn.dataset.confirmLabel ||
+        (twoStep ? "再点一次：切成作弊 ×0.01" : "是否选择获取全部宠物？再点一下继续");
+      const confirmMessage =
+        btn.dataset.confirmMessage ||
+        (twoStep ? "再点一次就切成作弊档（经验槽 ×0.01）。" : "是否选择获取全部宠物？再点一下才会看到后果。");
+      armConfirm(btn, 1, confirmLabel);
+      say(confirmMessage);
       return;
     }
     // 动作展示：纯本地演示，不查冷却、不改数值、不进对决

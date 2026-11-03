@@ -16,6 +16,7 @@ import {
   DIFFICULTY_LEVELS,
   DIFFICULTY_CHEAT,
   DIFFICULTY_KNOWN,
+  RESET_CARE_USES_COST,
 } from "../lib/pet.care-store.mjs";
 import { EXPEDITIONS } from "../lib/pet.care-rules.mjs";
 
@@ -85,6 +86,7 @@ test("reopening the database runs migrations once and keeps data", () => {
   const second = createCareStore({ databasePath });
   const snapshot = second.getCareSnapshot("p1", 1000);
   assert.equal(snapshot.state.satiety, 82);
+  assert.equal(snapshot.state.burstUses.snack, 1);
   second.close();
 
   const raw = new Database(databasePath, { readonly: true });
@@ -99,8 +101,10 @@ test("reopening the database runs migrations once and keeps data", () => {
     .all()
     .map((row) => row.name);
   raw.close();
-  assert.equal(version, 6);
+  assert.equal(version, 7);
   assert.ok(columns.includes("cooldown_pet"), "v3 migration must add cooldown_pet");
+  assert.ok(columns.includes("snack_burst_used"), "v7 migration must add snack_burst_used");
+  assert.ok(columns.includes("play_burst_used"), "v7 migration must add play_burst_used");
   assert.deepEqual(tables, [
     "magpie_pet_achievements",
     "magpie_pet_care_events",
@@ -145,21 +149,79 @@ test("rename persists per partner and validates the input", () => {
   store.close();
 });
 
-test("performAction applies decay and rejects a second snack during cooldown", () => {
+test("performAction allows four snacks before cooldown and persists the count", () => {
   const store = createCareStore({ databasePath: freshDbPath() });
   const t0 = 1_000_000;
   const first = store.performAction("p1", "snack", t0, {});
   assert.equal(first.ok, true);
   assert.equal(first.state.satiety, 82);
+  assert.equal(first.state.burstUses.snack, 1);
   assert.equal(typeof first.message, "string");
 
-  const refused = store.performAction("p1", "snack", t0 + MINUTE, {});
+  for (let i = 1; i < 4; i += 1) {
+    const result = store.performAction("p1", "snack", t0 + i * 1000, {});
+    assert.equal(result.ok, true);
+  }
+  const refused = store.performAction("p1", "snack", t0 + 4 * 1000, {});
   assert.equal(refused.ok, false);
   assert.equal(refused.reason, "cooldown");
 
   // One hour later the stored state decays by 2 satiety per hour.
   const decayed = store.getCareSnapshot("p1", t0 + 60 * MINUTE);
-  assert.equal(decayed.state.satiety, 80);
+  assert.ok(Math.abs(decayed.state.satiety - 98) < 0.01, `${decayed.state.satiety} !~ 98`);
+  store.close();
+});
+
+test("resetCareUses costs two fragments and clears only snack/play uses and cooldowns", () => {
+  const databasePath = freshDbPath();
+  const store = createCareStore({ databasePath });
+  const t0 = 1_000_000;
+  for (let i = 0; i < 4; i += 1) {
+    assert.equal(store.performAction("p1", "snack", t0 + i, {}).ok, true);
+  }
+  assert.ok(store.getCareSnapshot("p1", t0 + 4).state.cooldowns.snack > t0 + 4);
+
+  const raw = new Database(databasePath);
+  raw.run(
+    "INSERT INTO magpie_pet_inventory (item_id, kind, quantity, equipped) VALUES ('fragments', 'currency', 5, 0) ON CONFLICT(item_id) DO UPDATE SET quantity = 5",
+  );
+  raw.close();
+
+  const reset = store.resetCareUses("p1", t0 + 10);
+  assert.equal(reset.ok, true);
+  assert.equal(reset.cost, RESET_CARE_USES_COST);
+  assert.equal(reset.fragments, 3);
+  const snapshot = store.getCareSnapshot("p1", t0 + 10);
+  assert.equal(snapshot.state.cooldowns.snack, 0);
+  assert.equal(snapshot.state.cooldowns.play, 0);
+  assert.deepEqual(snapshot.state.burstUses, { snack: 0, play: 0 });
+  assert.equal(store.getCollection().fragments, 3);
+
+  const noop = store.resetCareUses("p1", t0 + 11);
+  assert.equal(noop.ok, false);
+  assert.equal(noop.reason, "nothing-to-reset");
+  assert.equal(store.getCollection().fragments, 3);
+  store.close();
+});
+
+test("resetCareUses refuses without enough fragments and leaves uses untouched", () => {
+  const databasePath = freshDbPath();
+  const store = createCareStore({ databasePath });
+  const t0 = 1_000_000;
+  assert.equal(store.performAction("p1", "snack", t0, {}).ok, true);
+
+  const raw = new Database(databasePath);
+  raw.run(
+    "INSERT INTO magpie_pet_inventory (item_id, kind, quantity, equipped) VALUES ('fragments', 'currency', 1, 0) ON CONFLICT(item_id) DO UPDATE SET quantity = 1",
+  );
+  raw.close();
+
+  const reset = store.resetCareUses("p1", t0 + 1);
+  assert.equal(reset.ok, false);
+  assert.equal(reset.reason, "insufficient-fragments");
+  const snapshot = store.getCareSnapshot("p1", t0 + 1);
+  assert.equal(snapshot.state.burstUses.snack, 1);
+  assert.equal(store.getCollection().fragments, 1);
   store.close();
 });
 
@@ -245,6 +307,7 @@ test("writes are rejected after close and close is idempotent", () => {
   store.close();
   store.close();
   assert.deepEqual(store.performAction("p1", "snack", 1000, {}), { ok: false, reason: "closed" });
+  assert.deepEqual(store.resetCareUses("p1", 1000), { ok: false, reason: "closed" });
   assert.deepEqual(store.startExpedition("p1", "patrol", 1000), { ok: false, reason: "closed" });
   assert.deepEqual(store.claimExpedition("exp-x", 1000), { ok: false, reason: "closed" });
   assert.deepEqual(store.equipDecoration("meadow"), { ok: false, reason: "closed" });

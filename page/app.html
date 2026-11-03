@@ -30,7 +30,9 @@
         <span>更多…</span><span class="muted small">作弊 / 全宠物获取</span>
       </button>
       <div class="gear-sub" id="cheat-panel" hidden>
-        <button type="button" class="gear-item" id="cheat-difficulty" data-command="pet-set-difficulty" data-args="0.01" data-confirm="1">
+        <button type="button" class="gear-item" id="cheat-difficulty" data-command="pet-set-difficulty" data-args="0.01" data-confirm="1"
+          data-confirm-label="再点一次：切成作弊 ×0.01"
+          data-confirm-message="再点一次就切成作弊档（经验槽 ×0.01）。">
           <b>作弊</b><span class="muted small">经验槽 ×0.01，是「极速」的 10 倍</span>
         </button>
         <button type="button" class="gear-item" id="cheat-grant-all" data-command="pet-grant-all" data-confirm="2">
@@ -151,7 +153,18 @@
       </section>
 
       <section id="actions" aria-label="日常照顾">
-        <h2>日常照顾</h2>
+        <div class="section-head">
+          <h2>日常照顾</h2>
+          <button type="button" class="care-reset" id="btn-reset-care-uses"
+            data-command="pet-reset-care-uses" data-confirm="1"
+            data-confirm-label="再点一次确认"
+            data-confirm-message="再点一次就消耗 2 个数据碎片，重置点心和玩耍的可用次数。"
+            title="消耗 2 个数据碎片，恢复点心和玩耍的可用次数">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4v6h6"/><path d="M20 12a8 8 0 1 1-2.34-5.66"/></svg>
+            <span>重置次数</span>
+            <span class="muted small">2 碎片</span>
+          </button>
+        </div>
         <div class="btn-grid">
           <button type="button" data-command="pet-feed-snack" data-cooldown="snack">喂食点心</button>
           <button type="button" data-command="pet-play" data-cooldown="play">玩耍</button>

@@ -45,6 +45,7 @@ test("createDefaultCareState returns the documented initial values", () => {
   assert.equal(state.lastDecayAt, 1000);
   assert.equal(state.updatedAt, 1000);
   assert.deepEqual(state.cooldowns, { snack: 0, play: 0, clean: 0, rest: 0, petEgg: 0, pet: 0 });
+  assert.deepEqual(state.burstUses, { snack: 0, play: 0 });
 });
 
 test("decay caps 48 hours offline to 24 hours and never lowers bond", () => {
@@ -71,16 +72,30 @@ test("decay with an earlier timestamp changes nothing", () => {
   assert.deepEqual(pick(result, ["satiety", "mood", "energy", "hygiene", "bond"]), [72, 70, 80, 75, 0]);
 });
 
-test("snack applies +10 satiety and +2 mood, then enters a 10 minute cooldown", () => {
+test("snack allows four uses, then enters a 10 minute cooldown", () => {
   const state = createDefaultCareState("p1", 0);
-  const result = applyCareAction(state, "snack", 60_000);
-  assert.equal(result.ok, true);
-  assert.deepEqual(pick(result.state, ["satiety", "mood"]), [82, 72]);
-  assert.equal(result.state.cooldowns.snack, 60_000 + 10 * 60 * 1000);
-  assert.equal(result.state.updatedAt, 60_000);
+  const first = applyCareAction(state, "snack", 60_000);
+  assert.equal(first.ok, true);
+  assert.deepEqual(pick(first.state, ["satiety", "mood"]), [82, 72]);
+  assert.equal(first.state.cooldowns.snack, 0);
+  assert.equal(first.state.burstUses.snack, 1);
+  assert.equal(first.state.updatedAt, 60_000);
+
+  const second = applyCareAction(first.state, "snack", 61_000);
+  const third = applyCareAction(second.state, "snack", 62_000);
+  const fourth = applyCareAction(third.state, "snack", 63_000);
+  assert.deepEqual([second.ok, third.ok, fourth.ok], [true, true, true]);
+  assert.deepEqual(pick(fourth.state, ["satiety", "mood"]), [100, 78]);
+  assert.equal(fourth.state.cooldowns.snack, 63_000 + 10 * 60 * 1000);
+  assert.equal(fourth.state.burstUses.snack, 0);
+
+  const refused = applyCareAction(fourth.state, "snack", 64_000);
+  assert.equal(refused.ok, false);
+  assert.equal(refused.reason, "cooldown");
   // original object untouched
   assert.deepEqual(pick(state, ["satiety", "mood"]), [72, 70]);
   assert.equal(state.cooldowns.snack, 0);
+  assert.equal(state.burstUses.snack, 0);
 });
 
 test("snack clamps satiety at 100", () => {
@@ -92,13 +107,17 @@ test("snack clamps satiety at 100", () => {
 
 test("an action during its cooldown is rejected without modifying the original state", () => {
   const state = createDefaultCareState("p1", 0);
-  const first = applyCareAction(state, "snack", 0);
-  assert.equal(first.ok, true);
-  const second = applyCareAction(first.state, "snack", 5 * 60 * 1000);
-  assert.equal(second.ok, false);
-  assert.equal(second.reason, "cooldown");
-  assert.equal(second.state, first.state);
-  assert.deepEqual(pick(first.state, ["satiety", "mood"]), [82, 72]);
+  let current = state;
+  for (let i = 0; i < 4; i += 1) {
+    const result = applyCareAction(current, "snack", i);
+    assert.equal(result.ok, true);
+    current = result.state;
+  }
+  const refused = applyCareAction(current, "snack", 5 * 60 * 1000);
+  assert.equal(refused.ok, false);
+  assert.equal(refused.reason, "cooldown");
+  assert.equal(refused.state, current);
+  assert.deepEqual(pick(current, ["satiety", "mood"]), [100, 78]);
 });
 
 test("play requires at least 20 energy", () => {
@@ -111,7 +130,18 @@ test("play requires at least 20 energy", () => {
   const played = applyCareAction(okState, "play", 0);
   assert.equal(played.ok, true);
   assert.deepEqual(pick(played.state, ["mood", "bond", "energy"]), [82, 2, 10]);
-  assert.equal(played.state.cooldowns.play, 8 * 60 * 1000);
+  assert.equal(played.state.cooldowns.play, 0);
+  assert.equal(played.state.burstUses.play, 1);
+
+  let current = createDefaultCareState("p1", 0);
+  for (let i = 0; i < 3; i += 1) {
+    const result = applyCareAction(current, "play", i);
+    assert.equal(result.ok, true);
+    current = result.state;
+  }
+  assert.equal(current.energy, 50);
+  assert.equal(current.cooldowns.play, 2 + 8 * 60 * 1000);
+  assert.equal(current.burstUses.play, 0);
 });
 
 test("clean restores hygiene to 100 and grants +1 bond only when hygiene was below 50", () => {

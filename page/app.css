@@ -220,6 +220,34 @@ section {
   box-shadow: 0 4px 18px rgba(90, 70, 30, 0.08);
 }
 
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.section-head h2 { margin: 0; }
+.care-reset {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.care-reset svg {
+  width: 13px;
+  height: 13px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.care-reset .muted { font-size: 10.5px; }
+
 /* ---------------- 栖息地 hero ---------------- */
 
 .habitat {
