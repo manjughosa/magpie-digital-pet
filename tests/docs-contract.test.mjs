@@ -32,12 +32,12 @@ function test(name, fn) {
 }
 
 test("package.json follows the page-plugin contract and bundles no restricted art", () => {
-  assert.equal(pkg.name, "@magpie-community/page-digital-pet");
+  assert.equal(pkg.name, "magpie-digital-pet");
   assert.equal(pkg.version, "0.6.0");
   assert.match(pkg.description, /@jcendal\/opencode-digital-pet 0\.18\.0/, "must keep upstream attribution");
   assert.match(pkg.description, /never touches agents' contexts/i, "must keep the no-agent-context promise");
-  assert.equal(pkg.repository.url, "git+https://github.com/magpie-community/plugins.git");
-  assert.equal(pkg.repository.directory, "packages/magpie-digital-pet");
+  assert.equal(pkg.repository.url, "git+https://github.com/manjughosa/magpie-digital-pet.git");
+  assert.equal(pkg.repository.directory, undefined);
   assert.equal(pkg.magpie.page.service.port, 3571);
   assert.equal(pkg.magpie.page.service.option, "port");
   assert.equal(pkg.dependencies["@jcendal/opencode-digital-pet"], "0.18.0");

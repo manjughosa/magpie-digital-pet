@@ -1,4 +1,6 @@
-# @magpie-community/page-digital-pet
+# magpie-digital-pet
+
+> **非官方插件**：本插件由个人独立维护，与任何官方社区组织及其维护者无隶属、合作或背书关系，也未使用其 npm scope。
 
 烧 token，养电子宠物 —— 跑在 [magpie](https://github.com/yetone/magpie) 网关上的插件，带侧边栏页面。
 

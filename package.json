@@ -1,7 +1,7 @@
 {
-  "name": "@magpie-community/page-digital-pet",
+  "name": "magpie-digital-pet",
   "version": "0.6.0",
-  "description": "A virtual pet page for the magpie gateway: routed usage feeds the active partner, with local care, expeditions and collections. Depends on @jcendal/opencode-digital-pet 0.18.0; pixel sprite frames are extracted from that Apache-2.0 package's TUI bundle. Polls magpie's own usage API; never touches agents' contexts.",
+  "description": "Unofficial third-party plugin. A virtual pet page for the magpie gateway: routed usage feeds the active partner, with local care, expeditions and collections. Depends on @jcendal/opencode-digital-pet 0.18.0; pixel sprite frames are extracted from that Apache-2.0 package's TUI bundle. Polls magpie's own usage API; never touches agents' contexts.",
   "type": "module",
   "main": "./index.mjs",
   "files": [
@@ -25,11 +25,10 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/magpie-community/plugins.git",
-    "directory": "packages/magpie-digital-pet"
+    "url": "git+https://github.com/manjughosa/magpie-digital-pet.git"
   },
   "bugs": {
-    "url": "https://github.com/magpie-community/plugins/issues"
+    "url": "https://github.com/manjughosa/magpie-digital-pet/issues"
   },
   "homepage": "https://github.com/manjughosa/magpie-digital-pet#readme",
   "engines": {
