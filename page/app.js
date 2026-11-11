@@ -704,6 +704,20 @@ function statusText(s) {
   return `它现在${label}${tail}`;
 }
 
+function battleSpriteUrl(node, state) {
+  const dir = node ? state.spriteDirs?.[node.id] : null;
+  return dir ? `/sprites/${encodeURIComponent(dir)}/0.png` : "";
+}
+
+function paintBattleSprite(id, node, state, name) {
+  const img = $(id);
+  img.hidden = true;
+  img.alt = `${name} 的像素形象`;
+  img.onload = () => { img.hidden = false; };
+  img.onerror = () => { img.hidden = true; };
+  img.src = battleSpriteUrl(node, state);
+}
+
 function paintHero(s) {
   const p = s.ok ? s.partner : null;
   if (!p) {
@@ -787,9 +801,15 @@ function paintHero(s) {
     $("battle-me").textContent = growName;
     $("battle-foe").textContent = p.battle.nameEn;
     $("battle-attr").textContent = p.battle.attributeLabel ?? "无属性";
+    paintBattleSprite("battle-me-sprite", grow, s, growName);
+    paintBattleSprite("battle-foe-sprite", p.battle, s, p.battle.nameEn);
+    const final = Boolean(p.battle.retry);
+    $("battle-rules").firstElementChild.textContent = final
+      ? "本回合必定成功，完成进化"
+      : "首次挑战：选错属性将退回 50% 进化进度";
+    $("battle-rules").lastElementChild.hidden = final;
     const stageEl = $("battle-stage");
     if (stageEl) {
-      const final = Boolean(p.battle.retry);
       stageEl.textContent = final ? "最终试炼" : "首次试炼";
       stageEl.classList.toggle("is-final", final);
     }

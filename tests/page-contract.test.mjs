@@ -187,6 +187,8 @@ test("destructive spawn requires a second click and dex switch warns about pinni
   }
   assert.ok(html.includes('id="battle-stage"'), "trial card needs a first/final stage badge");
   assert.ok(js.includes('classList.toggle("is-final"'), "stage badge must switch to the final state");
+  assert.ok(html.includes('id="battle-me-sprite"') && html.includes('id="battle-foe-sprite"'), "trial must show both pixel partners");
+  assert.ok(js.includes("state.spriteDirs?.[node.id]"), "sprites must use the server's species-to-directory mapping");
   assert.ok(js.includes('command("pet-display", item.id)'), "dex switch must run in one click");
   assert.ok(html.includes('id="display-note"'), "page must mark the species that is only being displayed");
   for (const label of ["只看背包", "查看已解锁", "全部图鉴", "只看未拥有"]) {
